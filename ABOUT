@@ -1,0 +1,8 @@
+cligui
+
+cligui is a tool to fasciliate calling command line tools. It provides a graphical user interface (GUI) to invoke programs that are operated via command line interfaces (CLI).
+
+There is a huge number of CLI based programs (which originate often from the Linux/Unix/Open Source community) that are very powerful, but hard to use for unexpirienced users at the command line level. cligui tries to provide a graphical interface that assists at using these tools without having to deal too much with functional and syntactical paradigms of the common command line interfaces.
+
+Apart from assisting unexpirienced users in using command line tools, cligui also intends to assist users familiar with the command line when using programs with complex command line interfaces which they use only occassionally, and to use their favorite command line tools on mashines were typing commands is difficult (e.g. tablet pcs and smartphones).
+
