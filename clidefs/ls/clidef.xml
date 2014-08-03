@@ -1,0 +1,58 @@
+<command>
+  <executable>ls</executable>
+  <helptext>list information about files and directories</helptext>
+  <section name="option" count="0..n">
+  <!-- <part repetition="*"> -->
+    <switch>
+      <longname>--all</longname>
+      <shortname>-a</shortname>
+      <helptext>do not ignore entries starting with .</helptext>
+      <!-- <mantext>do not ignore entries starting with .</mantext> -->
+    </switch>
+    <flag>
+      <longname separator="=">--sort</longname>
+      <helptext>sort by a different criterea than the name</helptext>
+      <section name="sort criteria" count="1">
+        <switch>
+          <name>none</name>
+          <helptext>do not sort; list entries in directory order</helptext>
+        </switch>
+        <!-- extension -X, size -S, time -t, version -v</alternative> -->
+      </section>
+    </flag>
+    <switch>
+      <shortname>-U</shortname>
+      <helptext>do not sort; list entries in directory order</helptext>
+      <conflicts>
+        <longname>--sort</longname>
+        <shortname>-X</shortname>
+        <shortname>-S</shortname>
+        <shortname>-t</shortname>
+        <shortname>-v</shortname>
+      </conflicts>
+    </switch>
+    <!--
+    <switch multiplicity="0..n">
+      <shortname>-v</shortname>
+      <helptext>verbose output. may be given multiple times to increase verbosity.</helptext>
+      <conflicts>
+        <shortname>-q</shortname>
+      </conflicts>
+    </switch>
+    -->
+  </section>
+  <section name="file" count="0..n">
+    <file type="bcdpflsD" mustexist="false"/>
+    <!--
+         type:  some of:
+              b      block (buffered) special
+              c      character (unbuffered) special
+              d      directory
+              p      named pipe (FIFO)
+              f      regular file
+              l      symbolic link
+              s      socket
+              D      door (Solaris)
+    -->
+  </section>
+</command>
