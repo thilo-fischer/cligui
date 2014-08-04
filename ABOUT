@@ -4,5 +4,6 @@ cligui is a tool to fasciliate calling command line tools. It provides a graphic
 
 There is a huge number of CLI based programs (which originate often from the Linux/Unix/Open Source community) that are very powerful, but hard to use for unexpirienced users at the command line level. cligui tries to provide a graphical interface that assists at using these tools without having to deal too much with functional and syntactical paradigms of the common command line interfaces.
 
-Apart from assisting unexpirienced users in using command line tools, cligui also intends to assist users familiar with the command line when using programs with complex command line interfaces which they use only occassionally, and to use their favorite command line tools on mashines were typing commands is difficult (e.g. tablet pcs and smartphones).
+Apart from assisting unexpirienced users in using command line tools, cligui also intends to assist users familiar with the command line when using programs with complex command line interfaces which they use only occassionally, and to use their favorite command line tools on machines were typing commands is difficult (e.g. tablet pcs and smartphones).
 
+cligui was designed to be very generic and to be adaptable to arbitrary command line tools (at least as long as these tools CLI sticks to common conventions) via .xml configuration files.

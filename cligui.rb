@@ -49,7 +49,9 @@ class Category
 
   def self.read(filename)
     doc = REXML::Document.new File.new(File.join(filename, "category.xml"))
-    
+    name = doc.
+    description = doc.
+    new(name, description)
   end
 
   def add_subcategories(sub)
