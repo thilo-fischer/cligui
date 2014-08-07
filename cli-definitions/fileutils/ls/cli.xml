@@ -44,6 +44,8 @@
   <section name="file" count="0..n">
     <file type="bcdpflsD" mustexist="false"/>
     <!--
+    alias type="*" type="bcdpflsD"
+    make type="*" the default
          type:  some of:
               b      block (buffered) special
               c      character (unbuffered) special
