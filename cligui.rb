@@ -26,7 +26,8 @@ class CliDef
   # return new object if given path corresponds to this class, return nil otherwise
   def self.create_if_valid(path)
     filename = File.join(path, self::BASEFILENAME)
-    if File.exist?(filename)
+# FIXME redundancy with Preset.create_if_valid
+    if File.file?(filename) or File.symlink?(filename)
       obj = new(path) 
       obj.read_selffile(filename)
       obj
@@ -134,9 +135,11 @@ class Preset < CliDef
   end
 
   def self.create_if_valid(path)
-    obj = new(path) 
-    obj.read_selffile(path)
-    obj
+    if File.file?(path) or File.symlink?(path)
+      obj = new(path) 
+      obj.read_selffile(path)
+      obj
+    end
   end
 
   def gather_children
