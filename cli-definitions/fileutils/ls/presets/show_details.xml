@@ -1,0 +1,10 @@
+<preset>
+  <title>Show details for each file</title>
+  <description>Output a list of the files provided, one per line, along with some information on these files like file size and time of last modification.</description>
+  <argument name="files" type="file" count="1..n">
+    <description>The files to list or directories of which to list the contained files.</description>
+  </argument>
+  <command>
+    ls -l --human-readable $files
+  </command>
+</preset>

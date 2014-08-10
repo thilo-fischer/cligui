@@ -1,0 +1,10 @@
+<preset>
+  <title>Show also hidden files</title>
+  <description>Output files from the directories provided including hidden files.</description>
+  <argument name="files" type="file" count="1..n">
+    <description>The directories of which to list the contained files.</description>
+  </argument>
+  <command>
+    ls --almost-all $files
+  </command>
+</preset>

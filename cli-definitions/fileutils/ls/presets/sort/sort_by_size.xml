@@ -1,0 +1,10 @@
+<preset>
+  <title>List files sorted by file size</title>
+  <description>Output a list of the files provided, one per line, sorted by file size.</description>
+  <argument name="files" type="file" count="1..n">
+    <description>The files to sort and list or directories of which to list the contained files sorted.</description>
+  </argument>
+  <command>
+    ls -1 --sort=size $files
+  </command>
+</preset>

@@ -1,28 +1,28 @@
 <command>
   <executable>ls</executable>
-  <helptext>list information about files and directories</helptext>
+  <description>list information about files and directories</description>
   <section name="option" count="0..n">
   <!-- <part repetition="*"> -->
     <switch>
       <longname>--all</longname>
       <shortname>-a</shortname>
-      <helptext>do not ignore entries starting with .</helptext>
-      <!-- <mantext>do not ignore entries starting with .</mantext> -->
+      <description>do not ignore entries starting with .</description>
+      <!-- <helptext>do not ignore entries starting with .</helptext> -->
     </switch>
     <flag>
       <longname separator="=">--sort</longname>
-      <helptext>sort by a different criterea than the name</helptext>
+      <description>sort by a different criterea than the name</description>
       <section name="sort criteria" count="1">
         <switch>
           <name>none</name>
-          <helptext>do not sort; list entries in directory order</helptext>
+          <description>do not sort; list entries in directory order</description>
         </switch>
         <!-- extension -X, size -S, time -t, version -v</alternative> -->
       </section>
     </flag>
     <switch>
       <shortname>-U</shortname>
-      <helptext>do not sort; list entries in directory order</helptext>
+      <description>do not sort; list entries in directory order</description>
       <conflicts>
         <longname>--sort</longname>
         <shortname>-X</shortname>
@@ -34,7 +34,7 @@
     <!--
     <switch multiplicity="0..n">
       <shortname>-v</shortname>
-      <helptext>verbose output. may be given multiple times to increase verbosity.</helptext>
+      <description>verbose output. may be given multiple times to increase verbosity.</description>
       <conflicts>
         <shortname>-q</shortname>
       </conflicts>
