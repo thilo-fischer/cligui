@@ -35,6 +35,10 @@ class StateExpectUsage < StateExpectDescription
       e = $root.add_element("executable")
       e.text = ARGV[0]
 
+      # add description element already now to make it appaer at the beginning of the XML code (just after "executable")
+      e = $root.add_element("description")
+      e.text = ""
+
       arguments = Regexp.last_match(2).split(/\s+/)
       arguments.each do |arg|
         if arg =~ /^(\[)?(.*?)(\.\.\.)?\]?$/
@@ -52,6 +56,7 @@ class StateExpectUsage < StateExpectDescription
           e = $root.add_element("section")
           e.attributes["title"] = arg
           e.attributes["count"] = count
+          e.text = ""
         else
           puts "warning ..."
         end
@@ -68,8 +73,7 @@ class StateExpectDescription < StateParseOptions
     puts "*** 01 #{self.to_s}.parse_line(\"#{ln}\")"
  if ln !~ superclass::REGEXP
       puts "  * desc #{Regexp.last_match.inspect}"
-      e   = $root.elements["description"]
-      e ||= $root.add_element("description")
+      e = $root.elements["description"]
       e.add_text ln
       self
     else
@@ -95,10 +99,9 @@ class StateParseOptions
       if names =~ /=\s*/
         e = @opt_section_e.add_element("flag")
         flag_arg = desc.slice!(/[\w\-\.:]+(\s+|$)/).rstrip
-        sect = e.add_element("section", {"title"=>flag_arg,"count"=>"1"})
-        sect.text = ""
       else
         e = @opt_section_e.add_element("switch")
+        flag_arg = nil
       end
       names.split(/\s+|\s*[,=]\s*/).each do |name|
         if name =~ /^-\w$/
@@ -111,10 +114,17 @@ class StateParseOptions
 
       d = e.add_element("description")
       d.text = desc
+
+      if flag_arg
+        sect = e.add_element("section", {"title"=>flag_arg,"count"=>"1"})
+        sect.text = ""
+      end
+
       @recent_e = e
     else
       # append to desription of most recent option
-      @recent_e.elements["description"].add_text ln
+      # TODO keep line breakes in .xml output
+      @recent_e.elements["description"].add_text(ln)
     end
     self
   end
