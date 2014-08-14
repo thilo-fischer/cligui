@@ -1,7 +1,7 @@
 <command>
   <executable>ls</executable>
   <description>list information about files and directories</description>
-  <section name="option" count="0..n">
+  <section title="options" count="0..n">
   <!-- <part repetition="*"> -->
     <switch>
       <longname>--all</longname>
@@ -12,7 +12,7 @@
     <flag>
       <longname separator="=">--sort</longname>
       <description>sort by a different criterea than the name</description>
-      <section name="sort criteria" count="1">
+      <section title="sort criteria" count="1">
         <switch>
           <name>none</name>
           <description>do not sort; list entries in directory order</description>
@@ -41,7 +41,7 @@
     </switch>
     -->
   </section>
-  <section name="file" count="0..n">
+  <section title="files &amp; directories" count="0..n">
     <file type="bcdpflsD" mustexist="false"/>
     <!--
     alias type="*" type="bcdpflsD"

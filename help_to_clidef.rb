@@ -8,10 +8,9 @@
 =end
 
 #require '...'
-require 'rexml/document'
+require 'rexml/element'
 
-
-$root = Element.new("category")
+$root = REXML::Element.new("category")
 
 command = ARGV.join(" ")
 lines = `#{command}`.lines
@@ -22,8 +21,8 @@ class StateExpectUsage < StateExpectDescription; end
 
 class StateExpectUsage < StateExpectDescription
   REGEXP = /^Usage:\s+(\w+)\s+(.*)$/
-  def self.parse_line(l)
-    if l =~ REGEXP
+  def self.parse_line(ln)
+    if ln =~ REGEXP
       executable = Regexp.last_match(1)
       puts "warning ..." if executable != ARGV[0]
       e = $root.add_element("title")
@@ -46,8 +45,8 @@ class StateExpectUsage < StateExpectDescription
           end
           count = "1" if count == "1..1"
           e = $root.add_element("section")
-          e["title"] = arg
-          e["count"] = count
+          e.attributes["title"] = arg
+          e.attributes["count"] = count
         else
           puts "warning ..."
         end
@@ -60,15 +59,11 @@ class StateExpectUsage < StateExpectDescription
 end # class StateExpectUsage 
 
 class StateExpectDescription < StateParseOptions
-  def self.parse_line(l)
-    if l !~ super.class.REGEXP
-      de = $root.elements["description"]
-      if de
-        de.text += l
-      else
-        e = $root.add_element("description")
-        e.text = l
-      end
+  def self.parse_line(ln)
+    if ln !~ super.class.REGEXP
+      e = $root.elements["description"]
+      e ||= $root.add_element("description")
+      e.add_text ln
       self
     else
       super
@@ -78,11 +73,11 @@ end
 
 class StateParseOptions
   REGEXP = /^\s*((-?\w+)(\s+|\s*,\s*))(.*)$/
-  def self.parse_line(l)
+  def self.parse_line(ln)
     # assume options are always the first thing after the command name in the "Usage: ..." line
     options = $root.elements["section"]
     $root.add_element("section", {"title"=>"options"}) unless options
-    if l =~ REGEXP
+    if ln =~ REGEXP
       e = options.add_element("flag") # todo switch?
       names = Regexp.last_match(2)
       names.split(/\s+|\s*,\s*/).each do |name|
@@ -97,17 +92,17 @@ class StateParseOptions
       d.text = Regexp.last_match(4)
     else
       # append to desription of most recent option
-      options.elements[-1].elements["description"].text += l
+      options.elements[-1].elements["description"].add_text ln
     end
     self
   end
 end
 
-state = StateParseUsage
+state = StateExpectUsage
 
 until lines.empty? do
-  l = lines.shift
-  state = state.parse(l)
+  ln = lines.shift
+  state = state.parse_line(ln)
 end
 
 $root.write(STDOUT)
