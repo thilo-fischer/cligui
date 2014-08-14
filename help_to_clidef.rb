@@ -84,7 +84,7 @@ class StateExpectDescription < StateParseOptions
 end
 
 class StateParseOptions
-  REGEXP = /^\s*((?:-[\w\-]+(?:\s+|\s*[,=]\s*))+)(.*?)$/
+  REGEXP = /^\s*(-[\w\-]+(?:(?:\s+|\s*,\s*)-[\w\-]+)*)(\[?=[\w\-\.,:]+\]?\s+)?(.*?)$/
   def self.parse_line(ln)
     puts "*** 02 #{self.to_s}.parse_line(\"#{ln}\")"
     # assume options are always the first thing after the command name in the "Usage: ..." line
@@ -94,16 +94,15 @@ class StateParseOptions
     end
     if ln =~ REGEXP
       puts "  * #{Regexp.last_match.inspect}"
-      names = Regexp.last_match(1)
-      desc  = Regexp.last_match(2)
-      if names =~ /=\s*/
+      names    = Regexp.last_match(1)
+      flag_arg = Regexp.last_match(2)
+      desc     = Regexp.last_match(3)
+      if flag_arg
         e = @opt_section_e.add_element("flag")
-        flag_arg = desc.slice!(/[\w\-\.:]+(\s+|$)/).rstrip
       else
         e = @opt_section_e.add_element("switch")
-        flag_arg = nil
       end
-      names.split(/\s+|\s*[,=]\s*/).each do |name|
+      names.split(/\s+|\s*,\s*/).each do |name|
         if name =~ /^-\w$/
           n = e.add_element("shortname")
         else
@@ -116,7 +115,10 @@ class StateParseOptions
       d.text = desc
 
       if flag_arg
-        sect = e.add_element("section", {"title"=>flag_arg,"count"=>"1"})
+        flag_arg =~ /(\[)?=(.*?)\]?\s*$/
+        count = Regexp.last_match(1) ? "0..1" : "1"
+        title = Regexp.last_match(2)
+        sect = e.add_element("section", {"title"=>title,"count"=>count})
         sect.text = ""
       end
 
