@@ -7,20 +7,33 @@
   This program is licenced under GPLv3.
 =end
 
-#require 'gtk2'
+require 'gtk2'
 require 'rexml/document'
+require 'logger'
 
+$l = Logger.new(STDOUT)
+if $DEBUG
+  $l.level = Logger::DEBUG
+  $l.datetime_format = '%Y-%m-%d %H:%M:%S'
+  $l.formatter = proc do |severity, datetime, progname, msg| "#{datetime} #{severity} #{msg}\n" end
+else
+  $l.level = Logger::INFO
+  $l.datetime_format = ''
+  $l.formatter = proc do |severity, datetime, progname, msg| "#{severity} #{msg}\n" end
+end
 
 class CliDef
 
   #CHILD_CLASSES = [ Category, Program ]
   #BASEFILENAME = "clidef.xml"
 
+  attr_reader :title, :description
+
   def initialize(directory)
     @directory = directory
     @children = {}
     self.class::CHILD_CLASSES.each { |c| @children[c] = [] }
-    puts "new " + self.class.to_s + " object: " + inspect
+    $l.debug "new " + self.class.to_s + " object: " + inspect
   end
 
   # return new object if given path corresponds to this class, return nil otherwise
@@ -36,6 +49,30 @@ class CliDef
 
   def gather_children
     gather_children_from_directory(@directory, self.class::BASEFILENAME)
+  end
+
+  def leaf_node?
+    self.class::CHILD_CLASSES.empty?
+  end
+
+  # must be passed a block that will be run once on every child.
+  # order of children is grouped by the classes the children belong to, classes ordered as given by CHILD_CLASSES
+  # TODO "class group" internal ordering
+  def each_child
+    self.class::CHILD_CLASSES.each do |clazz|
+      @children[clazz].each { |child| yield(child) }
+    end
+  end
+
+  def has_children?
+    self.class::CHILD_CLASSES.find { |c| ! @children[c].empty? } # FIXME
+  end
+
+  # return array of all children, grouped by the classes the children belong to, classes ordered as given by CHILD_CLASSES
+  # TODO "class group" internal ordering
+  def get_children
+    self.class::CHILD_CLASSES.collect { |result, c| result << @children[c] } # FIXME
+    result
   end
 
 private
@@ -58,12 +95,12 @@ private
         return child
       end
     end
-    puts "warning: ... " # TODO
+    $l.warn "warning: ... " # TODO
   end
 
   def add_child(key, value)
     @children[key] << value
-    puts self.to_s + " got new child: " + value.inspect
+    $l.debug self.to_s + " got new child: " + value.inspect
   end
 
 end # class CliDif
@@ -114,7 +151,7 @@ class Program < CliDef
   end
 
   def add_section(e)
-    puts "TODO: add section"
+    $l.unknown "TODO: add section"
   end
 
 end # class Program
@@ -147,7 +184,7 @@ class Preset < CliDef
   end
 
   def add_argument(e)
-    puts "TODO: add argument"
+    $l.unknown "TODO: add argument"
   end
 
 end # class Preset
@@ -160,26 +197,91 @@ end # class PresetCategory
 
 clidef_root = Category.new("./cli-definitions")
 clidef_root.gather_children
-puts "====="
-puts clidef_root.inspect
 
-__END__
 
-window = Gtk::Window.new
+## gui
 
-# # ???
-# window.signal_connect("delete_event") {
-#   puts "delete event occurred"
-#   #true
-#   false
-# }
+TITLE_IDX = 0
+DESC_IDX  = 1
 
-window.signal_connect("destroy") {
-  Gtk.main_quit
+def setup_tree_view(treeview)
+  renderer = Gtk::CellRendererText.new
+  column = Gtk::TreeViewColumn.new("Command", renderer, "text" => TITLE_IDX) # TODO what is `"text" => ...' doing ??
+  treeview.append_column(column)
+  renderer = Gtk::CellRendererText.new
+  column = Gtk::TreeViewColumn.new("Description", renderer, "text" => DESC_IDX)
+  treeview.append_column(column)
+end 
+
+window = Gtk::Window.new("cligui - A Graphical Frontend to Command Line Interfaces") 
+window.resizable = true
+window.border_width = 10 
+window.signal_connect('destroy') { Gtk.main_quit } 
+window.set_size_request(800, 400)
+
+treeview = Gtk::TreeView.new
+setup_tree_view(treeview) 
+treestore = Gtk::TreeStore.new(String, String)
+
+def add_to_treestore(clidef, treestore, ts_iter = nil)
+  ts_iter = treestore.append(ts_iter)
+  ts_iter[TITLE_IDX] = clidef.title
+  ts_iter[DESC_IDX]  = clidef.description
+  clidef.each_child { |child| add_to_treestore(child, treestore, ts_iter) }
+end
+
+clidef_root.each_child { |child| add_to_treestore(child, treestore) }
+
+widgets = {
+    :self => Gtk::VBox.new,
+    :scrolled_win => {
+        :self => Gtk::ScrolledWindow.new,
+        :treeview => Gtk::TreeView.new,
+    },
+    :btnbox => {
+        :self => Gtk::HBox.new,
+        :cancel => Gtk::Button.new('Cancel'),
+        :next => Gtk::Button.new('Next'),
+    },
 }
+def pack_widgets(wgts)
+    parent = wgts[:self]
+    wgts.values[1..-1].each do |sub|
+       case sub
+       when Hash
+        parent.pack_start(sub[:self])
+        pack_widgets(sub)
+       when Gtk::Widget
+        parent.pack_start(sub)
+       else
+        raise "foo" # TODO
+       end
+    end
+end
 
+boxes = [ Gtk::VBox.new, [ Gtk::HBox.new ] ]
+def pack_boxes(bxs)
+  bxs[1..-1].each do |sub|
+    bxs[0].pack_start(sub[0])
+    pack_boxes(sub)
+  end
+end
+pack_boxes(boxes)
+window.add(boxes[0])
 
+treeview.model = treestore
+scrolled_win = Gtk::ScrolledWindow.new
+scrolled_win.add(treeview)
+scrolled_win.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC) 
+boxes[0].pack_start(scrolled_win)
+
+cancel_btn = Gtk::Button.new("Cancel")
+cancel_btn.signal_connect('clicked') { Gtk.main_quit }
+boxes[1][0].pack_start(cancel_btn)
+
+next_btn = Gtk::Button.new("Next")
+cancel_btn.signal_connect('clicked') { raise "not yet implemented" }
+boxes[1][0].pack_end(next_btn)
 
 window.show_all
-
 Gtk.main

@@ -10,6 +10,18 @@
 #require '...'
 require 'rexml/element'
 require 'rexml/document'
+require 'logger'
+
+$l = Logger.new(STDOUT)
+if $DEBUG
+  $l.level = Logger::DEBUG
+  $l.datetime_format = '%Y-%m-%d %H:%M:%S'
+  $l.formatter = proc do |severity, datetime, progname, msg| "#{datetime} #{severity} #{msg}\n" end
+else
+  $l.level = Logger::INFO
+  $l.datetime_format = ''
+  $l.formatter = proc do |severity, datetime, progname, msg| "#{severity} #{msg}\n" end
+end
 
 # FIXME is document necessary?
 doc = REXML::Document.new("<category></category>")
@@ -18,18 +30,19 @@ $root = doc.root
 command = ARGV.join(" ")
 lines = `#{command}`.lines
 
-class StateParseOptions; end
+class StatePostOptions; end
+class StateParseOptions < StatePostOptions; end
 class StateExpectDescription < StateParseOptions; end
 class StateExpectUsage < StateExpectDescription; end
 
 class StateExpectUsage < StateExpectDescription
   REGEXP = /^Usage:\s+(\w+)\s+(.*)$/
   def self.parse_line(ln)
-    puts "*** #{self.to_s}.parse_line(\"#{ln}\")"
+    $l.debug "*** #{self.to_s}.parse_line(\"#{ln}\")"
     if ln =~ REGEXP
-      puts "  * #{Regexp.last_match.inspect}"
+      $l.debug "  * #{Regexp.last_match.inspect}"
       executable = Regexp.last_match(1)
-      puts "warning ..." if executable != ARGV[0]
+      $l.warn "warning ..." if executable != ARGV[0]
       e = $root.add_element("title")
       e.text = executable
       e = $root.add_element("executable")
@@ -39,6 +52,7 @@ class StateExpectUsage < StateExpectDescription
       e = $root.add_element("description")
       e.text = ""
 
+      # TODO handle stuff like `[[foo] bar]'
       arguments = Regexp.last_match(2).split(/\s+/)
       arguments.each do |arg|
         if arg =~ /^(\[)?(.*?)(\.\.\.)?\]?$/
@@ -58,42 +72,47 @@ class StateExpectUsage < StateExpectDescription
           e.attributes["count"] = count
           e.text = ""
         else
-          puts "warning ..."
+          $l.warn "warning ..."
         end
       end
       StateExpectDescription
     else
-      superclass.parse_line(ln)
+      superstate = superclass.parse_line(ln)
+      if superstate == StateParseOptions
+        StateParseOptions
+      else
+        self
+      end
     end
   end
 end # class StateExpectUsage 
 
 class StateExpectDescription < StateParseOptions
   def self.parse_line(ln)
-    puts "*** 01 #{self.to_s}.parse_line(\"#{ln}\")"
+    $l.debug "*** 01 #{self.to_s}.parse_line(\"#{ln}\")"
  if ln !~ superclass::REGEXP
-      puts "  * desc #{Regexp.last_match.inspect}"
+      $l.debug "  * desc #{Regexp.last_match.inspect}"
       e = $root.elements["description"]
       e.add_text ln
       self
     else
-      puts "  * opts #{Regexp.last_match.inspect}"
+      $l.debug "  * opts #{Regexp.last_match.inspect}"
       superclass.parse_line(ln)
     end
   end
 end
 
-class StateParseOptions
+class StateParseOptions < StatePostOptions
   REGEXP = /^\s*(-[\w\-]+(?:(?:\s+|\s*,\s*)-[\w\-]+)*)(\[?=[\w\-\.,:]+\]?\s+)?(.*?)$/
   def self.parse_line(ln)
-    puts "*** 02 #{self.to_s}.parse_line(\"#{ln}\")"
+    $l.debug "*** 02 #{self.to_s}.parse_line(\"#{ln}\")"
     # assume options are always the first thing after the command name in the "Usage: ..." line
     unless @opt_section_e
       @opt_section_e   = $root.elements["section"]
       @opt_section_e ||= $root.add_element("section", {"title"=>"options"})
     end
     if ln =~ REGEXP
-      puts "  * #{Regexp.last_match.inspect}"
+      $l.debug "  * #{Regexp.last_match.inspect}"
       names    = Regexp.last_match(1)
       flag_arg = Regexp.last_match(2)
       desc     = Regexp.last_match(3)
@@ -123,11 +142,24 @@ class StateParseOptions
       end
 
       @recent_e = e
-    else
+
+      self
+    elsif ln =~ /^\s+/
       # append to desription of most recent option
       # TODO keep line breakes in .xml output
       @recent_e.elements["description"].add_text(ln)
+      self
+    else
+      super
     end
+  end
+end
+
+class StatePostOptions
+  def self.parse_line(ln)
+    $l.debug "*** 03 #{self.to_s}.parse_line(\"#{ln}\")"
+    e = $root.elements["description"]
+    e.add_text ln
     self
   end
 end
@@ -136,7 +168,7 @@ state = StateExpectUsage
 
 until lines.empty? do
   ln = lines.shift.chomp
-  puts "* #{state.to_s} << \"#{ln}\""
+  $l.debug "* #{state.to_s} << \"#{ln}\""
   state = state.parse_line(ln)
 end
 
