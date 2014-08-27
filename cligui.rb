@@ -234,13 +234,23 @@ widgets = {
     :self => Gtk::VBox.new,
     :scrolled_win => {
         :self => Gtk::ScrolledWindow.new,
-        :treeview => Gtk::TreeView.new,
+        :setup => Proc.new do |scrolled_win|
+            scrolled_win.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC) 
+        end,
+        :treeview => {
+            :self => Gtk::TreeView.new,
+            :setup => Proc.new do |treeview|
+                setup_tree_view(treeview)
+                treeview.model = treestore
+            end,
+        },
     },
     :btnbox => {
         :self => Gtk::HBox.new,
+        :packing => Proc.new { |container, w| container.pack_start(w, FALSE, FALSE) },
         :cancel => {
             :self => Gtk::Button.new('Cancel'),
-            :packing => Proc.new { |c, w| c.pack_start(w, FALSE, FALSE) },
+            :packing => Proc.new { |container, w| container.pack_start(w, FALSE, FALSE) },
             :signals => {
                 'clicked' => Proc.new { Gtk.main_quit }
             }
@@ -254,36 +264,37 @@ widgets = {
         }
     },
 }
-def pack_widgets(wgts)
-    parent = wgts[:self]
-    wgts.values[1..-1].each do |sub|
-       case sub
-       when Hash
-        parent.add(sub[:self])
-        pack_widgets(sub)
-       when Gtk::Widget
-        parent.add(sub)
+def pack_widgets(container, wgts)
+    packed = FALSE
+    current = wgts[:self]
+    wgts.each_pair do |key, value|
+       case key
+       when :self
+        # skip
+       when :packing
+        value.yield(container, current)
+        packed = TRUE
+       when :signals
+        value.each_pair do |key, value|
+            current.signal_connect(key) { |arg| value.yield(arg) }
+        end
        else
-        raise "foo" # TODO
+        case value
+        when Hash
+         pack_widgets(current, value)
+        when Proc
+         value.yield(current)
+        else
+         raise "Don't know how to handle " + value.inspect
+        end
        end
+    end
+    if not packed
+        container.add(current)
     end
 end
 
-pack_widgets(widgets)
-window.add(widgets[:self])
-
-treeview = widgets[:scrolled_win][:treeview]
-setup_tree_view(treeview)
-treeview.model = treestore
-
-scrolled_win = widgets[:scrolled_win][:self]
-scrolled_win.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC) 
-
-cancel_btn = widgets[:btnbox][:cancel]
-cancel_btn.signal_connect('clicked') { Gtk.main_quit }
-
-next_btn = widgets[:btnbox][:next]
-cancel_btn.signal_connect('clicked') { raise "not yet implemented" }
+pack_widgets(window, widgets)
 
 window.show_all
 Gtk.main
