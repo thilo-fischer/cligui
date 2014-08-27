@@ -238,8 +238,20 @@ widgets = {
     },
     :btnbox => {
         :self => Gtk::HBox.new,
-        :cancel => Gtk::Button.new('Cancel'),
-        :next => Gtk::Button.new('Next'),
+        :cancel => {
+            :self => Gtk::Button.new('Cancel'),
+            :packing => Proc.new { |c, w| c.pack_start(w, FALSE, FALSE) },
+            :signals => {
+                'clicked' => Proc.new { Gtk.main_quit }
+            }
+        },
+        :next => {
+            :self => Gtk::Button.new('Next'),
+            :packing => Proc.new { |c, w| c.pack_end(w, FALSE, FALSE) },
+            :signals => {
+                'clicked' => Proc.new { raise "not yet implemented" }
+            }
+        }
     },
 }
 def pack_widgets(wgts)
