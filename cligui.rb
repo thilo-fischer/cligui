@@ -219,8 +219,6 @@ window.border_width = 10
 window.signal_connect('destroy') { Gtk.main_quit } 
 window.set_size_request(800, 400)
 
-treeview = Gtk::TreeView.new
-setup_tree_view(treeview) 
 treestore = Gtk::TreeStore.new(String, String)
 
 def add_to_treestore(clidef, treestore, ts_iter = nil)
@@ -249,39 +247,31 @@ def pack_widgets(wgts)
     wgts.values[1..-1].each do |sub|
        case sub
        when Hash
-        parent.pack_start(sub[:self])
+        parent.add(sub[:self])
         pack_widgets(sub)
        when Gtk::Widget
-        parent.pack_start(sub)
+        parent.add(sub)
        else
         raise "foo" # TODO
        end
     end
 end
 
-boxes = [ Gtk::VBox.new, [ Gtk::HBox.new ] ]
-def pack_boxes(bxs)
-  bxs[1..-1].each do |sub|
-    bxs[0].pack_start(sub[0])
-    pack_boxes(sub)
-  end
-end
-pack_boxes(boxes)
-window.add(boxes[0])
+pack_widgets(widgets)
+window.add(widgets[:self])
 
+treeview = widgets[:scrolled_win][:treeview]
+setup_tree_view(treeview)
 treeview.model = treestore
-scrolled_win = Gtk::ScrolledWindow.new
-scrolled_win.add(treeview)
+
+scrolled_win = widgets[:scrolled_win][:self]
 scrolled_win.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC) 
-boxes[0].pack_start(scrolled_win)
 
-cancel_btn = Gtk::Button.new("Cancel")
+cancel_btn = widgets[:btnbox][:cancel]
 cancel_btn.signal_connect('clicked') { Gtk.main_quit }
-boxes[1][0].pack_start(cancel_btn)
 
-next_btn = Gtk::Button.new("Next")
+next_btn = widgets[:btnbox][:next]
 cancel_btn.signal_connect('clicked') { raise "not yet implemented" }
-boxes[1][0].pack_end(next_btn)
 
 window.show_all
 Gtk.main
