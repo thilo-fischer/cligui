@@ -1,0 +1,182 @@
+
+require 'rexml/document'
+
+class CliDef
+
+  #CHILD_CLASSES = [ Category, Program ]
+  #BASEFILENAME = "clidef.xml"
+
+  attr_reader :title, :description
+
+  def initialize(directory)
+    @directory = directory
+    @children = {}
+    self.class::CHILD_CLASSES.each { |c| @children[c] = [] }
+    $l.debug "new " + self.class.to_s + " object: " + inspect
+  end
+
+  # return new object if given path corresponds to this class, return nil otherwise
+  def self.create_if_valid(path)
+    filename = File.join(path, self::BASEFILENAME)
+# FIXME redundancy with Preset.create_if_valid
+    if File.file?(filename) or File.symlink?(filename)
+      obj = new(path) 
+      obj.read_selffile(filename)
+      obj
+    end
+  end
+
+  def gather_children
+    gather_children_from_directory(@directory, self.class::BASEFILENAME)
+  end
+
+  def leaf_node?
+    self.class::CHILD_CLASSES.empty?
+  end
+
+  # must be passed a block that will be run once on every child.
+  # order of children is grouped by the classes the children belong to, classes ordered as given by CHILD_CLASSES
+  # TODO "class group" internal ordering
+  def each_child
+    self.class::CHILD_CLASSES.each do |clazz|
+      @children[clazz].each { |child| yield(child) }
+    end
+  end
+
+  def has_children?
+    self.class::CHILD_CLASSES.find { |c| ! @children[c].empty? } # FIXME
+  end
+
+  # return array of all children, grouped by the classes the children belong to, classes ordered as given by CHILD_CLASSES
+  # TODO "class group" internal ordering
+  def get_children
+    self.class::CHILD_CLASSES.collect { |result, c| result << @children[c] } # FIXME
+    result
+  end
+
+private
+
+  def gather_children_from_directory(directory, *entries_to_skip)
+    Dir.foreach(directory) do |entry|
+      if entry == "." or entry == ".." or entries_to_skip.include?(entry)
+        next
+      end
+      add_child_from_path(File.join(directory, entry))
+    end
+  end
+
+  def add_child_from_path(path)
+   self.class::CHILD_CLASSES.each do |cls|
+      child = cls.create_if_valid(path)
+      if child
+        add_child(cls, child)
+        child.gather_children
+        return child
+      end
+    end
+    $l.warn "warning: ... " # TODO
+  end
+
+  def add_child(key, value)
+    @children[key] << value
+    $l.debug self.to_s + " got new child: " + value.inspect
+  end
+
+end # class CliDif
+
+class Category < CliDef; end
+class Program  < CliDef; end
+class Preset   < CliDef; end
+class PresetCategory < Category; end
+
+class Category < CliDef
+
+  CHILD_CLASSES = [ Category, Program ]
+  BASEFILENAME = "category.xml"
+
+  def read_selffile(filename)
+    # TODO verify document validity using DTD file and ignore invalid files
+    doc = REXML::Document.new File.new(filename)
+    root = doc.root
+    @title       = root.elements["title"].text
+    @description = root.elements["description"].text
+  end
+
+end # class Category
+
+
+class Program < CliDef
+
+  CHILD_CLASSES = [ Preset, PresetCategory ]
+  BASEFILENAME = "cli.xml"
+
+  def read_selffile(filename)
+    # TODO verify document validity using DTD file and ignore invalid files
+    doc = REXML::Document.new File.new(filename)
+    root = doc.root
+    @description = root.elements["description"].text
+    @executable  = root.elements["executable"].text
+    titleelement = root.elements["title"]
+    if titleelement
+      @title = titleelement.text
+    else
+      @title = @executable
+    end
+    doc.elements.each("command/section") { |e| add_section(e) }
+  end
+
+  def gather_children
+    gather_children_from_directory(File.join(@directory, Preset::DIRNAME), self.class::BASEFILENAME)
+  end
+
+  def add_section(e)
+    $l.unknown "TODO: add section"
+  end
+
+end # class Program
+
+
+class Preset < CliDef
+
+  CHILD_CLASSES = []
+  DIRNAME = "presets"
+
+  def read_selffile(filename)
+    # TODO verify document validity using DTD file and ignore invalid files
+    doc = REXML::Document.new File.new(filename)
+    root = doc.root
+    @title       = root.elements["title"].text
+    @description = root.elements["description"].text
+    doc.elements.each("preset/argument") { |e| add_argument(e) }
+  end
+
+  def self.create_if_valid(path)
+    if File.file?(path) or File.symlink?(path)
+      obj = new(path) 
+      obj.read_selffile(path)
+      obj
+    end
+  end
+
+  def gather_children
+    nil
+  end
+
+  def add_argument(e)
+    $l.unknown "TODO: add argument"
+  end
+
+end # class Preset
+
+
+class PresetCategory < Category
+  CHILD_CLASSES = [ Preset, PresetCategory ]
+end # class PresetCategory
+
+class ClidefTree
+attr_reader :root
+def initialize(root_dir)
+@root = Category.new(root_dir)
+@root.gather_children
+end
+end
