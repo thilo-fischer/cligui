@@ -110,6 +110,8 @@ class Program < CliDef
   CHILD_CLASSES = [ Preset, PresetCategory ]
   BASEFILENAME = "cli.xml"
 
+  attr_reader :executable
+
   def read_selffile(filename)
     # TODO verify document validity using DTD file and ignore invalid files
     doc = REXML::Document.new File.new(filename)
@@ -131,6 +133,10 @@ class Program < CliDef
 
   def add_section(e)
     $l.unknown "TODO: add section"
+  end
+
+  def get_command_structure
+    raise "todo"
   end
 
 end # class Program
@@ -166,6 +172,10 @@ class Preset < CliDef
     $l.unknown "TODO: add argument"
   end
 
+  def get_command_structure
+    raise "todo"
+  end
+
 end # class Preset
 
 
@@ -180,3 +190,106 @@ def initialize(root_dir)
 @root.gather_children
 end
 end
+
+class Section
+  def initialize(xml)
+    @title = xml.attributes['title']
+
+    # FIXME extract to method
+    count = xml.attributes['count']
+    case count
+    when /^\*$/
+      @count_min = 0
+      @count_max = -1
+    when /^\+$/
+      @count_min = 1
+      @count_max = -1
+    when /^\d+$/
+      @count_min = Integer(count)
+      @count_max = @count_min
+    when /^(\d+)\.\.(\d+|\*|n)$/
+      @count_min = Integer(Regexp.last_match(1))
+      max = Regexp.last_match(2)
+      @count_max = case max
+      when "*", "n"
+        -1
+      else
+        Integer(max)
+      end
+    else
+      raise "Invalid count specification in .xml file: `#{count}'"
+    end
+
+    @elements = []
+
+    xml.elements.each do |xe|
+      @elements << Element.create(xe)
+    end
+  end
+end # class Section
+
+class Element
+  def initialize(xml)
+    @description = xml.elements['description']
+    @helptext    = xml.elements['helptext']
+  end # Element.initialize
+  def self.create(xml)
+    case xml.name
+    when "switch"
+      Switch.new(xml)
+    when "flag"
+      Flag.new(xml)
+    when "argument"
+      Argument.new(xml)
+    when "file"
+      FileArg.new(xml)
+    else
+      raise "Invalid XML element: `#{xml.name}'"
+    end
+  end # Element.create
+end # class Element
+
+class Switch < Element
+  @@instances = {} # FIXME instances-hash must be section-specific
+  def initialize(xml)
+    super
+    @longname  = xml.elements['longname']
+    if @longname
+      raise "argement occurs multiple times: `#{@longname}'" if @@instances.key?(@longname)
+      @@instances[@longname] = self
+    end
+    @shortname = xml.elements['shortname']
+    if @shortname
+      raise "argement occurs multiple times: `#{@shortname}'" if @@instances.key?(@shortname)
+      @@instances[@shortname] = self
+    end
+  end
+end
+
+class Flag < Switch
+  def initialize(xml)
+    super
+    # "mandatory"|"optional"|nil == 'optional'. Catching typos and invalid strings (like 'Manatory') is the DTDs job.
+    @arg_optional  = xml.elements['argument'] == 'optional'
+    @longname_sep  = xml.elements['longname'].attributes['separator']
+    @shortname_sep = xml.elements['shortname'].attributes['separator']
+  end
+end
+
+class Argument < Element
+  def initialize(xml)
+    super
+    # ... (TODO)
+  end
+end
+
+class FileArg < Argument
+  def initialize(xml)
+    super
+    @type = xml.attributes['type']
+    @type = 'fdlbcpsD' if not @type or @type == '*'
+    # "true"|"false"|nil == 'true'. Catching typos and invalid strings (like 'Fasle') is the DTDs job.
+    @mustexist = xml.attributes['mustexist'] == 'true'
+  end
+end
+

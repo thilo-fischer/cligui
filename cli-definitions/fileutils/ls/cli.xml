@@ -10,6 +10,7 @@
       <!-- <helptext>do not ignore entries starting with .</helptext> -->
     </switch>
     <flag>
+      <!-- implies: argument="mandatory", alterative: argument="optional" -->
       <longname separator="=">--sort</longname>
       <description>sort by a different criterea than the name</description>
       <section title="sort criteria" count="1">

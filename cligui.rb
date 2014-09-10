@@ -24,5 +24,10 @@ end
 clidef_tree = ClidefTree.new("./cli-definitions")
 
 selwin = SelectionWindow.new(clidef_tree.root)
-selwin.show
+clidef = selwin.show
 
+cmdwin = CommandWindow.new(clidef)
+cmdline = cmdwin.show
+
+execwin = ExecWindow.new(cmdline)
+execwin.show
