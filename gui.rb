@@ -13,6 +13,10 @@ class CliDef; end
 
 class Window
 
+  DEFAULT_TITLE = "cligui - A Graphical Frontend to Command Line Interfaces"
+  DEFAULT_WIDTH = 800
+  DEFAULT_HEIGHT = 600
+  
   private def widgets
     @widgets ||= {
       :self => Gtk::VBox.new,
@@ -20,7 +24,7 @@ class Window
     }
   end
 
-  def initialize(title, width = 800, height = 400)
+  def initialize(title = DEFAULT_TITLE, width = DEFAULT_WIDTH, height = DEFAULT_HEIGHT)
     @window = Gtk::Window.new(title) 
     @window.resizable = true
     @window.border_width = 10 
@@ -32,6 +36,7 @@ class Window
   def pack_widgets(container, wgts = widgets)
     packed = FALSE
     current = wgts[:self]
+    $l.debug "packing #{current} into #{container}"
     wgts.each_pair do |key, value|
        case key
        when :self
@@ -44,14 +49,19 @@ class Window
             current.signal_connect(key) { |arg| value.yield(arg) }
         end
        else
-        case value
-        when Hash
-         pack_widgets(current, value)
-        when Proc
-         value.yield(current)
-        else
-         raise "Don't know how to handle " + value.inspect
-        end
+         case value
+         when Hash
+           $l.debug "pack #{key} #{value[:self]} from #{value} into #{current}"
+           pack_widgets(current, value)
+         when Proc
+           $l.debug "yield #{key} #{value}"
+           value.yield(current)
+         when Gtk::Widget
+           $l.debug "adding #{key} #{value} to #{current}"
+           current.add(value) 
+         else
+           raise "Don't know how to handle " + value.inspect
+         end
        end
     end
     if not packed
@@ -86,12 +96,12 @@ class SelectionWindow < Window
                   'cursor-changed' => Proc.new do |w|
                       puts "cursor-changed"
                       if w.selection.selected
-                          @nextBtn.sensitive = w.selection.selected[REF_IDX].respond_to? :get_command_structure
+                          @nextBtn.sensitive = w.selection.selected[REF_IDX].respond_to? :run_command
                       end
                   end,
                   'row-activated' => Proc.new do |w|
                       puts "treeview row-activated"
-                      @nextBtn.sensitive = w.selection.selected[REF_IDX].respond_to? :get_command_structure
+                      @nextBtn.sensitive = w.selection.selected[REF_IDX].respond_to? :run_command
                   end,
               },
               :setup => Proc.new do |treeview|
@@ -117,7 +127,7 @@ class SelectionWindow < Window
               :signals => {
                   'clicked' => Proc.new do
                       @selection = @treeview.selection.selected[REF_IDX]
-                      @window.close
+                      Gtk.main_quit # FIXME something like @window.close
                   end,
               },
               :setup => Proc.new do |btn|
@@ -139,6 +149,7 @@ class SelectionWindow < Window
   end
   
   def add_to_treestore(clidef, treestore, ts_iter = nil)
+    $l.debug "add to treestore: " + clidef.title
     ts_iter = treestore.append(ts_iter)
     ts_iter[TITLE_IDX] = clidef.title
     ts_iter[DESC_IDX]  = clidef.description
@@ -148,10 +159,10 @@ class SelectionWindow < Window
 
   def initialize(clidef_root)
 
-    super("cligui - A Graphical Frontend to Command Line Interfaces")
-
     @treestore = Gtk::TreeStore.new(String, String, CliDef)
     clidef_root.each_child { |child| add_to_treestore(child, @treestore) }
+
+    super()
 
   end # initialize
 
@@ -163,6 +174,9 @@ class SelectionWindow < Window
 end # class SelectionWindow
 
 class CommandWindow < Window
+
+  TEXT_NO_SECTION_SELECTED = "Click on the boxes above to set up the according options for the command invokation."
+  TEXT_SECTION_SELECTED    = "Set the options according to your needs using the controls at the left of this text."
 
   private def widgets
     @widgets ||= {
@@ -187,8 +201,7 @@ class CommandWindow < Window
           :cmd_box => {
               :self => Gtk::HBox.new,
               :cmd_btn => {
-                  :self => Gtk::Button.new,
-                  :setup => Proc.new { |w| w.text = @clidef.executable },
+                  :self => Gtk::Button.new(@clidef.executable),
               },
               :setup => Proc.new { |w| @cmd_box = w }
           },
@@ -208,7 +221,7 @@ class CommandWindow < Window
               scrolled_win.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC) 
           end,
           :help_text => {
-              :self => Gtk::Label.new("Click on the boxes above to set up the according options for the command invokation."),
+              :self => Gtk::Label.new(TEXT_NO_SECTION_SELECTED),
               :setup => Proc.new { |w| @help_text = w },
           },
         },
@@ -241,21 +254,37 @@ class CommandWindow < Window
   
   def initialize(clidef)
     @clidef = clidef
-    super
+    @button_section_map = {}
+    @current_button = nil
+    super()
     @clidef.each_section do |s|
-        w = Gtk::Frame(s.title)
-        @frame_section_map[w] = s
-        @cmd_box.pack_start(w)
-        w.signal_connect('clicked') do |w|
-          puts "clicked #{w}, #{@frame_section_map[w]}"
-          @current_section = @frame_section_map[w]
+        f = Gtk::Frame.new(s.title)
+        b = Gtk::ToggleButton.new
+        b.add(f)
+        @button_section_map[b] = s
+        @cmd_box.pack_start(b)
+        b.signal_connect('toggled') do |b|
+          # FIXME toggled will be signaled to button also when calling active=, so two buttons will receive the toggled signal when "switching" activity from one button to another
+          puts "#{b} toggled"
+          if b.active?
+            @current_button.active = FALSE if @current_button
+            @current_button = b
+          else
+            raise "Invalid state" unless @current_button == b
+            @current_button = nil
+          end
           refresh_argumentbox
         end
     end
   end
 
   def refresh_argumentbox
-    @argedit_box # TODO
+    if @current_button
+      @help_text.text = TEXT_SECTION_SELECTED
+      @argedit_box # TODO
+    else
+      @help_text.text = TEXT_NO_SECTION_SELECTED 
+    end
   end
 
 end # class CommandWindow

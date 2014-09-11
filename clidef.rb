@@ -50,8 +50,7 @@ class CliDef
   # return array of all children, grouped by the classes the children belong to, classes ordered as given by CHILD_CLASSES
   # TODO "class group" internal ordering
   def get_children
-    self.class::CHILD_CLASSES.collect { |result, c| result << @children[c] } # FIXME
-    result
+    self.class::CHILD_CLASSES.inject([]) { |result, c| result += @children[c] } # FIXME
   end
 
 private
@@ -82,7 +81,7 @@ private
     $l.debug self.to_s + " got new child: " + value.inspect
   end
 
-end # class CliDif
+end # class CliDef
 
 class Category < CliDef; end
 class Program  < CliDef; end
@@ -112,6 +111,11 @@ class Program < CliDef
 
   attr_reader :executable
 
+  def initialize(directory)
+    super
+    @sections = []
+  end
+
   def read_selffile(filename)
     # TODO verify document validity using DTD file and ignore invalid files
     doc = REXML::Document.new File.new(filename)
@@ -132,10 +136,15 @@ class Program < CliDef
   end
 
   def add_section(e)
-    $l.unknown "TODO: add section"
+    @sections << Section.new(e)
   end
 
-  def get_command_structure
+  # must be passed a block that will be run once on every section.
+  def each_section
+    @sections.each { |s| yield(s) }
+  end
+
+  def run_command
     raise "todo"
   end
 
@@ -172,7 +181,7 @@ class Preset < CliDef
     $l.unknown "TODO: add argument"
   end
 
-  def get_command_structure
+  def run_command
     raise "todo"
   end
 
@@ -192,6 +201,9 @@ end
 end
 
 class Section
+
+  attr_reader :title, :count_min, :count_max
+
   def initialize(xml)
     @title = xml.attributes['title']
 
@@ -226,6 +238,11 @@ class Section
       @elements << Element.create(xe)
     end
   end
+
+  def each_element
+    @elements.each { |e| yield(e) }
+  end
+
 end # class Section
 
 class Element
@@ -271,8 +288,8 @@ class Flag < Switch
     super
     # "mandatory"|"optional"|nil == 'optional'. Catching typos and invalid strings (like 'Manatory') is the DTDs job.
     @arg_optional  = xml.elements['argument'] == 'optional'
-    @longname_sep  = xml.elements['longname'].attributes['separator']
-    @shortname_sep = xml.elements['shortname'].attributes['separator']
+    @longname_sep  = xml.elements['longname' ].attributes['separator']  if @longname
+    @shortname_sep = xml.elements['shortname'].attributes['separator'] if @shortname
   end
 end
 

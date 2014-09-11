@@ -23,8 +23,15 @@ end
 
 clidef_tree = ClidefTree.new("./cli-definitions")
 
-selwin = SelectionWindow.new(clidef_tree.root)
-clidef = selwin.show
+#selwin = SelectionWindow.new(clidef_tree.root)
+#clidef = selwin.show
+$l.debug "#{clidef_tree}"
+$l.debug "#{clidef_tree.root}"
+$l.debug "#{clidef_tree.root.get_children}"
+$l.debug "#{clidef_tree.root.get_children[0]}"
+$l.debug "#{clidef_tree.root.get_children[0].get_children}"
+$l.debug "#{clidef_tree.root.get_children[0].get_children[0]}"
+clidef = clidef_tree.root.get_children[0].get_children[0] # for debugging CommandWindow
 
 cmdwin = CommandWindow.new(clidef)
 cmdline = cmdwin.show
