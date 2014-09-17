@@ -281,10 +281,95 @@ class CommandWindow < Window
   def refresh_argumentbox
     if @current_button
       @help_text.text = TEXT_SECTION_SELECTED
-      @argedit_box # TODO
+      section = @button_section_map[@current_button]
+      display_frame = @current_button.children[0]
+      section.render(@argedit_box, @help_text, display_frame)
     else
       @help_text.text = TEXT_NO_SECTION_SELECTED 
     end
   end
 
 end # class CommandWindow
+
+class SectionRenderer
+
+  def initialize(section, editor_controls, editor_help, display)
+    @section = section
+    @editor_controls = editor_controls
+    @editor_help = editor_help
+    @display = display
+  end
+
+  def render
+    render_editor
+  end
+
+  def render_display
+  end
+
+  def render_editor
+    if @section.element_count == 1
+      @section.each_element do |e|
+        e.render_editor
+      end
+    else
+      radio_group_button = nil
+      if @section.count_min == 1 and @section.count_max == 1
+        # TODO use RadioButton instead of CheckButton
+        get_button = Proc.new do
+          b = Gtk::RadioButton(radio_group_button)
+          radio_group_button ||= b
+        end
+      else
+        get_button = Proc.new { Gtk::CheckButton.new }
+      end
+      @section.each_element do |elem|
+        ed = elem.get_render.get_editor
+        button = get_button
+        button.add(ed)
+      end
+    end
+  end
+
+end # class SectionRenderer
+
+class ElementRenderer
+
+  def initialize(element)
+    @element = element
+  end
+
+  def get_display
+    Gtk::Label(@element.title)
+  end
+  
+  alias get_editor get_display
+
+end # class ElementRenderer
+
+
+class SwitchRenderer < ElementRenderer
+end
+
+
+class FlagRenderer < ElementRenderer
+
+  def get_display
+    frame = Gtk::Frame(@elemet.title)
+    section = @element.argument
+    renderer = section.renderer(nil, nil, frame) # FIXME
+    renderer.render_display
+    frame
+  end
+
+  def get_display
+    frame = Gtk::Frame(@elemet.title)
+    section = @element.argument
+    renderer = section.renderer(frame, nil, nil) # FIXME
+    renderer.render_editor
+    frame
+  end
+
+end
+
+

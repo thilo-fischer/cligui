@@ -193,16 +193,25 @@ class PresetCategory < Category
 end # class PresetCategory
 
 class ClidefTree
-attr_reader :root
-def initialize(root_dir)
-@root = Category.new(root_dir)
-@root.gather_children
+  attr_reader :root
+  def initialize(root_dir)
+    @root = Category.new(root_dir)
+    @root.gather_children
+  end
 end
-end
+
+class SectionRenderer; end
+class ElementRenderer; end
+class SwitchRenderer < ElementRenderer; end
+class FlagRenderer < ElementRenderer; end
+class ArgumentRenderer < ElementRenderer; end
+class FileArgRenderer < ElementRenderer; end
 
 class Section
 
   attr_reader :title, :count_min, :count_max
+
+  RENDERER = SectionRenderer
 
   def initialize(xml)
     @title = xml.attributes['title']
@@ -243,9 +252,19 @@ class Section
     @elements.each { |e| yield(e) }
   end
 
+  def element_count
+    @elements.length
+  end
+  
+  def render(editor_controls, editor_help, display)
+    renderer = self.class::RENDERER.new(self, editor_controls, editor_help, display)
+    renderer.render
+  end
+
 end # class Section
 
 class Element
+  RENDERER = ElementRenderer
   def initialize(xml)
     @description = xml.elements['description']
     @helptext    = xml.elements['helptext']
@@ -267,6 +286,7 @@ class Element
 end # class Element
 
 class Switch < Element
+  RENDERER = SwitchRenderer
   @@instances = {} # FIXME instances-hash must be section-specific
   def initialize(xml)
     super
@@ -284,16 +304,23 @@ class Switch < Element
 end
 
 class Flag < Switch
+  RENDERER = FlagRenderer
   def initialize(xml)
     super
-    # "mandatory"|"optional"|nil == 'optional'. Catching typos and invalid strings (like 'Manatory') is the DTDs job.
-    @arg_optional  = xml.elements['argument'] == 'optional'
-    @longname_sep  = xml.elements['longname' ].attributes['separator']  if @longname
-    @shortname_sep = xml.elements['shortname'].attributes['separator'] if @shortname
+    if @longname
+      @longname_sep  = xml.elements['longname' ].attributes['separator']
+      @longname_sep  ||= "=" # FIXME define constant for default separator string
+    end
+    if @shortname
+      @shortname_sep = xml.elements['shortname'].attributes['separator']
+      @shortname_sep ||= " " # FIXME define constant for default separator string
+    end
+    @argument = Section.new(xml.elements['section'])
   end
 end
 
 class Argument < Element
+  RENDERER = ArgumentRenderer
   def initialize(xml)
     super
     # ... (TODO)
@@ -301,6 +328,7 @@ class Argument < Element
 end
 
 class FileArg < Argument
+  RENDERER = FileArgRenderer
   def initialize(xml)
     super
     @type = xml.attributes['type']
