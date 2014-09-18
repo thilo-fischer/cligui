@@ -200,22 +200,54 @@ class ClidefTree
   end
 end
 
-class SectionRenderer; end
 class ElementRenderer; end
+class SectionRenderer < ElementRenderer; end
 class SwitchRenderer < ElementRenderer; end
 class FlagRenderer < ElementRenderer; end
 class ArgumentRenderer < ElementRenderer; end
 class FileArgRenderer < ElementRenderer; end
 
-class Section
+class Element
+  
+  RENDERER = ElementRenderer
+
+  def initialize(xml)
+    @title       = xml.elements['title']
+    @description = xml.elements['description']
+    @helptext    = xml.elements['helptext']
+  end # Element.initialize
+  
+def self.create(xml)
+  case xml.name
+  when "section"
+    Section.new(xml)
+  when "switch"
+    Switch.new(xml)
+  when "flag"
+    Flag.new(xml)
+  when "argument"
+    Argument.new(xml)
+  when "file"
+    FileArg.new(xml)
+  else
+    raise "Invalid XML element: `#{xml.name}'"
+  end
+end # Element.create
+
+  def renderer
+    self.class::RENDERER
+  end
+
+end # class Element
+
+class Section < Element
 
   attr_reader :title, :count_min, :count_max
 
   RENDERER = SectionRenderer
 
   def initialize(xml)
-    @title = xml.attributes['title']
-
+    super
     # FIXME extract to method
     count = xml.attributes['count']
     case count
@@ -260,41 +292,7 @@ class Section
     @elements.each { |e| yield(e) }
   end
 
-  def renderer
-    self.class::RENDERER
-  end
-
 end # class Section
-
-class Element
-  
-  RENDERER = ElementRenderer
-
-  def initialize(xml)
-    @description = xml.elements['description']
-    @helptext    = xml.elements['helptext']
-  end # Element.initialize
-  
-def self.create(xml)
-    case xml.name
-    when "switch"
-      Switch.new(xml)
-    when "flag"
-      Flag.new(xml)
-    when "argument"
-      Argument.new(xml)
-    when "file"
-      FileArg.new(xml)
-    else
-      raise "Invalid XML element: `#{xml.name}'"
-    end
-  end # Element.create
-
-  def renderer
-    self.class::RENDERER
-  end
-
-end # class Element
 
 class Switch < Element
   RENDERER = SwitchRenderer
@@ -305,11 +303,13 @@ class Switch < Element
     if @longname
       raise "argement occurs multiple times: `#{@longname}'" if @@instances.key?(@longname)
       @@instances[@longname] = self
+      @title ||= @longname
     end
     @shortname = xml.elements['shortname']
     if @shortname
       raise "argement occurs multiple times: `#{@shortname}'" if @@instances.key?(@shortname)
       @@instances[@shortname] = self
+      @title ||= @shortname
     end
   end
 end

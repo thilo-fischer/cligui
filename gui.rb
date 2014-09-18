@@ -45,8 +45,8 @@ class Window
         value.yield(container, current)
         packed = TRUE
        when :signals
-        value.each_pair do |key, value|
-            current.signal_connect(key) { |arg| value.yield(arg) }
+        value.each_pair do |signame, proc|
+            current.signal_connect(signame) { |arg| proc.yield(arg) }
         end
        else
          case value
@@ -263,14 +263,14 @@ class CommandWindow < Window
         b.add(f)
         @button_section_map[b] = s
         @cmd_box.pack_start(b)
-        b.signal_connect('toggled') do |b|
+        b.signal_connect('toggled') do |w|
           # FIXME toggled will be signaled to button also when calling active=, so two buttons will receive the toggled signal when "switching" activity from one button to another
-          puts "#{b} toggled"
-          if b.active?
+          puts "#{w} toggled"
+          if w.active?
             @current_button.active = FALSE if @current_button
-            @current_button = b
+            @current_button = w
           else
-            raise "Invalid state" unless @current_button == b
+            raise "Invalid state" unless @current_button == w
             @current_button = nil
           end
           refresh_argumentbox
@@ -284,7 +284,7 @@ class CommandWindow < Window
       section = @button_section_map[@current_button]
       display_frame = @current_button.children.first
       @argedit_box.each { |child| @argedit_box.remove(child) }
-      section.renderer.render_editor(section, @argedit_box)
+      section.renderer.render_editor(section, @argedit_box, @help_text, display_frame)
       section.renderer.render_help(section, @help_text)
     else
       @help_text.text = TEXT_NO_SECTION_SELECTED 
@@ -293,79 +293,89 @@ class CommandWindow < Window
 
 end # class CommandWindow
 
-class SectionRenderer
-
-  class << self
-
-  def render(section, editor_controls, editor_help, display)
-    render_editor(section, editor_controls) if editor_controls
-    render_help(section, editor_help) if editor_help
-    render_display(section, display) if display
-  end
-
-  def render_display(section, container)
-    container.add(display(section))
-  end
-
-  def display(section)
-    if section.single_element?
-      e = section.first_element
-      e.renderer.display(e)
-    else
-      container = Gtk::VBox.new
-      section.each_element do |e|
-        container.add(e.display) if e.active?
-      end
-      container
-    end
-  end
-
-  def render_editor(section, container)
-    container.add(editor(section))
-  end
-
-  def editor(section)
-    if section.single_element?
-      e = section.first_element
-      e.renderer.editor(e)
-    else
-      container = Gtk::VBox.new
-      radio_group_button = nil
-      if section.count_min == 1 and section.count_max == 1
-        get_button = Proc.new do
-          b = Gtk::RadioButton(radio_group_button)
-          radio_group_button ||= b
-        end
-      else
-        get_button = Proc.new { Gtk::CheckButton.new }
-      end
-      section.each_element do |e|
-        button = get_button
-        button.add(e.renderer.editor(e))
-        container.add(button)
-      end
-    end
-  end
-
-  def render_help(section, widget)
-    text = section.description
-    text += section.helptext if section.helptext
-    widget.text = text
-  end
-
-end # class SectionRenderer
-
 class ElementRenderer
 
   class << self
 
-  def display(element)
-    Gtk::Label(element.title)
-  end
+    def display(element)
+      Gtk::Label(element.title)
+    end
+    
+    # Return a widget (often a container filled with other widgets) to modify the element's settings.
+    # Update help_text according to the element's help text when one of the element's widget gets focus. (TODO)
+    # Update display according to the element's settings when settings get changed. (TODO)
+    def editor(element, help_text, display)
+      Gtk::Label(element.title)
+    end
   
-  alias editor display
+  end # class << self
 
 end # class ElementRenderer
+
+class SectionRenderer < ElementRenderer
+
+  class << self
+
+    def render(section, editor_controls, editor_help, display)
+      render_editor(section, editor_controls) if editor_controls
+      render_help(section, editor_help) if editor_help
+      render_display(section, display) if display
+    end
+  
+    def render_display(section, container)
+      container.add(display(section))
+    end
+  
+    def display(section)
+      if section.single_element?
+        e = section.first_element
+        e.renderer.display(e)
+      else
+        container = Gtk::VBox.new
+        section.each_element do |e|
+          container.add(e.display) if e.active?
+        end
+        container
+      end
+    end
+
+    # Put the widget to modify the section's child elements' settings into container.
+    def render_editor(section, container, help_text, display)
+      container.add(editor(section))
+    end
+    
+    def editor(section)
+      if section.single_element?
+        e = section.first_element
+        e.renderer.editor(e)
+      else
+        container = Gtk::VBox.new
+        radio_group_button = nil
+        if section.count_min == 1 and section.count_max == 1
+          get_button = Proc.new do
+              b = Gtk::RadioButton(radio_group_button)
+            radio_group_button ||= b
+          end
+        else
+          get_button = Proc.new { Gtk::CheckButton.new }
+        end
+        section.each_element do |e|
+          button = get_button
+          button.add(e.renderer.editor(e))
+          container.add(button)
+        end
+      end
+    end
+
+    def render_help(section, widget)
+      text = section.description
+      text += section.helptext if section.helptext
+      widget.text = text
+    end
+  
+  end # class << self
+  
+end # class SectionRenderer
 
 
 class SwitchRenderer < ElementRenderer
@@ -373,6 +383,8 @@ end
 
 
 class FlagRenderer < ElementRenderer
+
+  class << self
 
   def display(element)
     frame = Gtk::Frame(elemet.title)
@@ -387,6 +399,8 @@ class FlagRenderer < ElementRenderer
     frame.add(section.renderer.editor(section))
     frame
   end
+
+  end # class << self
 
 end
 
