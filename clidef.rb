@@ -248,28 +248,34 @@ class Section
     end
   end
 
+  def first_element
+    @elements.first
+  end
+
+  def single_element?
+    @elements.length == 1
+  end
+
   def each_element
     @elements.each { |e| yield(e) }
   end
 
-  def element_count
-    @elements.length
-  end
-  
-  def render(editor_controls, editor_help, display)
-    renderer = self.class::RENDERER.new(self, editor_controls, editor_help, display)
-    renderer.render
+  def renderer
+    self.class::RENDERER
   end
 
 end # class Section
 
 class Element
+  
   RENDERER = ElementRenderer
+
   def initialize(xml)
     @description = xml.elements['description']
     @helptext    = xml.elements['helptext']
   end # Element.initialize
-  def self.create(xml)
+  
+def self.create(xml)
     case xml.name
     when "switch"
       Switch.new(xml)
@@ -283,6 +289,11 @@ class Element
       raise "Invalid XML element: `#{xml.name}'"
     end
   end # Element.create
+
+  def renderer
+    self.class::RENDERER
+  end
+
 end # class Element
 
 class Switch < Element

@@ -282,8 +282,10 @@ class CommandWindow < Window
     if @current_button
       @help_text.text = TEXT_SECTION_SELECTED
       section = @button_section_map[@current_button]
-      display_frame = @current_button.children[0]
-      section.render(@argedit_box, @help_text, display_frame)
+      display_frame = @current_button.children.first
+      @argedit_box.each { |child| @argedit_box.remove(child) }
+      section.renderer.render_editor(section, @argedit_box)
+      section.renderer.render_help(section, @help_text)
     else
       @help_text.text = TEXT_NO_SECTION_SELECTED 
     end
@@ -293,29 +295,43 @@ end # class CommandWindow
 
 class SectionRenderer
 
-  def initialize(section, editor_controls, editor_help, display)
-    @section = section
-    @editor_controls = editor_controls
-    @editor_help = editor_help
-    @display = display
+  class << self
+
+  def render(section, editor_controls, editor_help, display)
+    render_editor(section, editor_controls) if editor_controls
+    render_help(section, editor_help) if editor_help
+    render_display(section, display) if display
   end
 
-  def render
-    render_editor
+  def render_display(section, container)
+    container.add(display(section))
   end
 
-  def render_display
-  end
-
-  def render_editor
-    if @section.element_count == 1
-      @section.each_element do |e|
-        e.render_editor
-      end
+  def display(section)
+    if section.single_element?
+      e = section.first_element
+      e.renderer.display(e)
     else
+      container = Gtk::VBox.new
+      section.each_element do |e|
+        container.add(e.display) if e.active?
+      end
+      container
+    end
+  end
+
+  def render_editor(section, container)
+    container.add(editor(section))
+  end
+
+  def editor(section)
+    if section.single_element?
+      e = section.first_element
+      e.renderer.editor(e)
+    else
+      container = Gtk::VBox.new
       radio_group_button = nil
-      if @section.count_min == 1 and @section.count_max == 1
-        # TODO use RadioButton instead of CheckButton
+      if section.count_min == 1 and section.count_max == 1
         get_button = Proc.new do
           b = Gtk::RadioButton(radio_group_button)
           radio_group_button ||= b
@@ -323,27 +339,31 @@ class SectionRenderer
       else
         get_button = Proc.new { Gtk::CheckButton.new }
       end
-      @section.each_element do |elem|
-        ed = elem.get_render.get_editor
+      section.each_element do |e|
         button = get_button
-        button.add(ed)
+        button.add(e.renderer.editor(e))
+        container.add(button)
       end
     end
+  end
+
+  def render_help(section, widget)
+    text = section.description
+    text += section.helptext if section.helptext
+    widget.text = text
   end
 
 end # class SectionRenderer
 
 class ElementRenderer
 
-  def initialize(element)
-    @element = element
-  end
+  class << self
 
-  def get_display
-    Gtk::Label(@element.title)
+  def display(element)
+    Gtk::Label(element.title)
   end
   
-  alias get_editor get_display
+  alias editor display
 
 end # class ElementRenderer
 
@@ -354,22 +374,19 @@ end
 
 class FlagRenderer < ElementRenderer
 
-  def get_display
-    frame = Gtk::Frame(@elemet.title)
-    section = @element.argument
-    renderer = section.renderer(nil, nil, frame) # FIXME
-    renderer.render_display
+  def display(element)
+    frame = Gtk::Frame(elemet.title)
+    section = element.argument
+    frame.add(section.renderer.display(section))
     frame
   end
 
-  def get_display
-    frame = Gtk::Frame(@elemet.title)
-    section = @element.argument
-    renderer = section.renderer(frame, nil, nil) # FIXME
-    renderer.render_editor
+  def editor(element)
+    frame = Gtk::Frame(elemet.title)
+    section = element.argument
+    frame.add(section.renderer.editor(section))
     frame
   end
 
 end
-
 
