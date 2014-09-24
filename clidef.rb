@@ -210,33 +210,32 @@ class FileArgRenderer < ElementRenderer; end
 class Element
   
   RENDERER = ElementRenderer
+  attr_reader :title, :renderer
 
   def initialize(xml)
-    @title       = xml.elements['title']
+    @title     = xml.attributes['title']
+    @title     ||= xml.elements['title']
     @description = xml.elements['description']
     @helptext    = xml.elements['helptext']
+    @renderer = self.class::RENDERER.new(self)
   end # Element.initialize
   
-def self.create(xml)
-  case xml.name
-  when "section"
-    Section.new(xml)
-  when "switch"
-    Switch.new(xml)
-  when "flag"
-    Flag.new(xml)
-  when "argument"
-    Argument.new(xml)
-  when "file"
-    FileArg.new(xml)
-  else
-    raise "Invalid XML element: `#{xml.name}'"
-  end
-end # Element.create
-
-  def renderer
-    self.class::RENDERER
-  end
+  def self.create(xml)
+    case xml.name
+    when "section"
+      Section.new(xml)
+    when "switch"
+      Switch.new(xml)
+    when "flag"
+      Flag.new(xml)
+    when "argument"
+      Argument.new(xml)
+    when "file"
+      FileArg.new(xml)
+    else
+      raise "Invalid XML element: `#{xml.name}'"
+    end
+  end # Element.create
 
 end # class Element
 

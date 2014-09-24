@@ -258,6 +258,7 @@ class CommandWindow < Window
     @current_button = nil
     super()
     @clidef.each_section do |s|
+        $l.debug "pack display button for section `#{s.title}'"
         f = Gtk::Frame.new(s.title)
         b = Gtk::ToggleButton.new
         b.add(f)
@@ -295,86 +296,103 @@ end # class CommandWindow
 
 class ElementRenderer
 
-  class << self
+  # Create an object to handle the presentation of element within the GUI.
+  # Update help_text according to the element's help text when one of the element's widget gets focus. (TODO)
+  # Update display according to the element's settings when settings get changed. (TODO)
+  def initialize(element)
+    @element = element
+    @edit_area = nil
+    @help_text = nil
+    @display_area = nil
+  end
 
-    def display(element)
-      Gtk::Label(element.title)
-    end
-    
-    # Return a widget (often a container filled with other widgets) to modify the element's settings.
-    # Update help_text according to the element's help text when one of the element's widget gets focus. (TODO)
-    # Update display according to the element's settings when settings get changed. (TODO)
-    def editor(element, help_text, display)
-      Gtk::Label(element.title)
-    end
+  # Return a widget (often a container filled with other widgets) displaying the element's current settings.
+  def display
+    Gtk::Label(@element.title)
+  end
   
-  end # class << self
+  def render_display(display_area = nil)
+    if display_area
+      @display_area = display_area
+    end
+    if @display_area
+      @display_area.each { |wgt| display_area.remove(wgt) }
+      @display_area.add(display)
+    else
+      $l.warn("No display_area argument given (or arg is nil) and @display_area is nil at #{caller[0]}.")
+    end
+  end
+
+  # Return a widget (often a container filled with other widgets) to modify the element's settings.
+  def editor
+    Gtk::Label(@element.title)
+  end
+
+  def render_editor(edit_area = nil)
+    if edit_area
+      @edit_area = edit_area
+    end
+    if @edit_area
+      @edit_area.each { |wgt| @edit_area.remove(wgt) }
+      @edit_area.add(editor)
+    else
+      $l.warn("No edit_area argument given (or arg is nil) and @edit_area is nil at #{caller[0]}.")
+    end
+  end
+
+  def render_help(help_text)
+    if help_text
+      @help_text = help_text
+    end
+    if @help_text
+      text = element.description
+      text += element.helptext if element.helptext
+      help_text.text = text
+    else
+      $l.warn("No help_text argument given (or arg is nil) and @help_text is nil at #{caller[0]}.")
+    end
+  end
 
 end # class ElementRenderer
 
 class SectionRenderer < ElementRenderer
 
-  class << self
-
-    def render(section, editor_controls, editor_help, display)
-      render_editor(section, editor_controls) if editor_controls
-      render_help(section, editor_help) if editor_help
-      render_display(section, display) if display
+  def display
+    if @element.single_element?
+      e = @element.first_element
+      e.renderer.display
+    else
+      container = Gtk::VBox.new
+      element.each_element do |e|
+        container.add(e.renderer.display) if e.active?
+      end
+      container
     end
+  end
   
-    def render_display(section, container)
-      container.add(display(section))
-    end
-  
-    def display(section)
-      if section.single_element?
-        e = section.first_element
-        e.renderer.display(e)
-      else
-        container = Gtk::VBox.new
-        section.each_element do |e|
-          container.add(e.display) if e.active?
+  def editor
+    if @element.single_element?
+      e = @element.first_element
+      e.renderer.editor
+    else
+      container = Gtk::VBox.new
+      radio_group_button = nil
+      if @element.count_min == 1 and @element.count_max == 1
+        get_button = Proc.new do
+            b = Gtk::RadioButton(radio_group_button)
+          radio_group_button ||= b
         end
-        container
+      else
+        get_button = Proc.new { Gtk::CheckButton.new }
+      end
+      @element.each_element do |e|
+        button = get_button
+        button.add(e.renderer.editor)
+        container.add(button)
       end
     end
+  end
 
-    # Put the widget to modify the section's child elements' settings into container.
-    def render_editor(section, container, help_text, display)
-      container.add(editor(section))
-    end
-    
-    def editor(section)
-      if section.single_element?
-        e = section.first_element
-        e.renderer.editor(e)
-      else
-        container = Gtk::VBox.new
-        radio_group_button = nil
-        if section.count_min == 1 and section.count_max == 1
-          get_button = Proc.new do
-              b = Gtk::RadioButton(radio_group_button)
-            radio_group_button ||= b
-          end
-        else
-          get_button = Proc.new { Gtk::CheckButton.new }
-        end
-        section.each_element do |e|
-          button = get_button
-          button.add(e.renderer.editor(e))
-          container.add(button)
-        end
-      end
-    end
-
-    def render_help(section, widget)
-      text = section.description
-      text += section.helptext if section.helptext
-      widget.text = text
-    end
-  
-  end # class << self
-  
 end # class SectionRenderer
 
 
@@ -386,17 +404,17 @@ class FlagRenderer < ElementRenderer
 
   class << self
 
-  def display(element)
-    frame = Gtk::Frame(elemet.title)
-    section = element.argument
-    frame.add(section.renderer.display(section))
+  def display
+    frame = Gtk::Frame(@element.title)
+    section = @element.argument
+    frame.add(section.renderer.display)
     frame
   end
 
-  def editor(element)
-    frame = Gtk::Frame(elemet.title)
-    section = element.argument
-    frame.add(section.renderer.editor(section))
+  def editor
+    frame = Gtk::Frame(@elemet.title)
+    section = @element.argument
+    frame.add(section.renderer.editor)
     frame
   end
 
