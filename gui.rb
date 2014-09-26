@@ -301,63 +301,44 @@ class ElementRenderer
   # Update display according to the element's settings when settings get changed. (TODO)
   def initialize(element)
     @element = element
-    @edit_area = nil
-    @help_text = nil
-    @display_area = nil
+    @editor = nil
+    @help_wgt = nil
+    @display = nil
   end
 
-  # Return a widget (often a container filled with other widgets) displaying the element's current settings.
+  # Update and return the widget (often a container filled with other widgets) displaying the element's current settings.
   def display
-    Gtk::Label(@element.title)
-  end
-  
-  def render_display(display_area = nil)
-    if display_area
-      @display_area = display_area
-    end
-    if @display_area
-      @display_area.each { |wgt| display_area.remove(wgt) }
-      @display_area.add(display)
+    unless @display
+      @display = create_display
+      @display.no_show_all = true
     else
-      $l.warn("No display_area argument given (or arg is nil) and @display_area is nil at #{caller[0]}.")
+      update_display
     end
+    @display.visible = @element.active?
   end
 
-  # Return a widget (often a container filled with other widgets) to modify the element's settings.
+  private def create_display
+    Gtk::Label(@element.title)
+  end
+
+  private def update_display
+    @display = create_display
+  end
+
+  # Update and return the widget (often a container filled with other widgets) to modify the element's settings.
   def editor
-    Gtk::Label(@element.title)
+    @editor ||= Gtk::Label(@element.title)
   end
 
-  def render_editor(edit_area = nil)
-    if edit_area
-      @edit_area = edit_area
-    end
-    if @edit_area
-      @edit_area.each { |wgt| @edit_area.remove(wgt) }
-      @edit_area.add(editor)
-    else
-      $l.warn("No edit_area argument given (or arg is nil) and @edit_area is nil at #{caller[0]}.")
-    end
-  end
-
-  def render_help(help_text)
-    if help_text
-      @help_text = help_text
-    end
-    if @help_text
-      text = element.description
-      text += element.helptext if element.helptext
-      help_text.text = text
-    else
-      $l.warn("No help_text argument given (or arg is nil) and @help_text is nil at #{caller[0]}.")
-    end
+  def self.set_help_wgt(help_wgt)
+    @@help_wgt = help_wgt
   end
 
 end # class ElementRenderer
 
 class SectionRenderer < ElementRenderer
 
-  def display
+  private def create_display
     if @element.single_element?
       e = @element.first_element
       e.renderer.display
@@ -379,7 +360,7 @@ class SectionRenderer < ElementRenderer
       radio_group_button = nil
       if @element.count_min == 1 and @element.count_max == 1
         get_button = Proc.new do
-            b = Gtk::RadioButton(radio_group_button)
+          b = Gtk::RadioButton(radio_group_button)
           radio_group_button ||= b
         end
       else
@@ -389,6 +370,8 @@ class SectionRenderer < ElementRenderer
         button = get_button
         button.add(e.renderer.editor)
         container.add(button)
+        button.signal_connect('clicked') { self.update_display }
+        button.signal_connect('focus') { @@help_wgt.text = e.help_text }
       end
     end
   end
@@ -397,6 +380,11 @@ end # class SectionRenderer
 
 
 class SwitchRenderer < ElementRenderer
+
+  private def update_display
+    nil
+  end
+
 end
 
 
@@ -404,11 +392,15 @@ class FlagRenderer < ElementRenderer
 
   class << self
 
-  def display
+  private def create_display
     frame = Gtk::Frame(@element.title)
     section = @element.argument
     frame.add(section.renderer.display)
     frame
+  end
+
+  private def update_display
+    @element.argument.renderer.update_display
   end
 
   def editor
