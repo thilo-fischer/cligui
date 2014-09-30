@@ -284,9 +284,8 @@ class CommandWindow < Window
       @help_text.text = TEXT_SECTION_SELECTED
       section = @button_section_map[@current_button]
       display_frame = @current_button.children.first
-      @argedit_box.each { |child| @argedit_box.remove(child) }
-      section.renderer.render_editor(section, @argedit_box, @help_text, display_frame)
-      section.renderer.render_help(section, @help_text)
+      @argedit_box.each { |child| @argedit_box.remove(child) } # TODO Would it be cheaper to just throw away the argedit_box and create a new one?
+      @argedit_box.add(section.renderer.editor)
     else
       @help_text.text = TEXT_NO_SECTION_SELECTED 
     end
@@ -297,16 +296,15 @@ end # class CommandWindow
 class ElementRenderer
 
   # Create an object to handle the presentation of element within the GUI.
-  # Update help_text according to the element's help text when one of the element's widget gets focus. (TODO)
-  # Update display according to the element's settings when settings get changed. (TODO)
   def initialize(element)
     @element = element
     @editor = nil
-    @help_wgt = nil
     @display = nil
   end
 
-  # Update and return the widget (often a container filled with other widgets) displaying the element's current settings.
+  # Update the widget (often a container filled with other widgets) displaying the element's current settings.
+  # Create the widgit if not yet existing.
+  # Returns the updated (or newly created) widget.
   def display
     unless @display
       @display = create_display
@@ -327,7 +325,7 @@ class ElementRenderer
 
   # Update and return the widget (often a container filled with other widgets) to modify the element's settings.
   def editor
-    @editor ||= Gtk::Label(@element.title)
+    @editor ||= Gtk::Label.new(@element.title)
   end
 
   def self.set_help_wgt(help_wgt)
@@ -367,12 +365,13 @@ class SectionRenderer < ElementRenderer
         get_button = Proc.new { Gtk::CheckButton.new }
       end
       @element.each_element do |e|
-        button = get_button
+        button = get_button.call
         button.add(e.renderer.editor)
         container.add(button)
         button.signal_connect('clicked') { self.update_display }
         button.signal_connect('focus') { @@help_wgt.text = e.help_text }
       end
+      container
     end
   end
 

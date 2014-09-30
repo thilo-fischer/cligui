@@ -214,9 +214,10 @@ class Element
 
   def initialize(xml)
     @title     = xml.attributes['title']
-    @title     ||= xml.elements['title']
-    @description = xml.elements['description']
-    @helptext    = xml.elements['helptext']
+    @title     ||= xml.elements['title'].text if xml.elements['title']
+    $l.debug "initialize #{self.inspect} from #{xml}"
+    @description = xml.elements['description'].text if xml.elements['description']
+    @helptext    = xml.elements['helptext'].text if xml.elements['helptext']
     @renderer = self.class::RENDERER.new(self)
   end # Element.initialize
   
@@ -298,13 +299,13 @@ class Switch < Element
   @@instances = {} # FIXME instances-hash must be section-specific
   def initialize(xml)
     super
-    @longname  = xml.elements['longname']
+    @longname  = xml.elements['longname'].text if xml.elements['longname']
     if @longname
       raise "argement occurs multiple times: `#{@longname}'" if @@instances.key?(@longname)
       @@instances[@longname] = self
       @title ||= @longname
     end
-    @shortname = xml.elements['shortname']
+    @shortname = xml.elements['shortname'].text if xml.elements['shortname']
     if @shortname
       raise "argement occurs multiple times: `#{@shortname}'" if @@instances.key?(@shortname)
       @@instances[@shortname] = self
