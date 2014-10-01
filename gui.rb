@@ -302,30 +302,58 @@ class ElementRenderer
     @display = nil
   end
 
-  # Update the widget (often a container filled with other widgets) displaying the element's current settings.
-  # Create the widgit if not yet existing.
-  # Returns the updated (or newly created) widget.
+  # The widget (often a container filled with other widgets) displaying the element's current settings.
+  # Create the widget if not yet existing.
   def display
     unless @display
-      @display = create_display
+      @display = new_display
       @display.no_show_all = true
-    else
-      update_display
     end
-    @display.visible = @element.active?
+    update_display_activity
   end
 
-  private def create_display
+  private def new_display
     Gtk::Label(@element.title)
   end
 
-  private def update_display
-    @display = create_display
+  def update_display
+    @display = new_display
+    update_display_activity
+  end
+
+  def update_display_activity
+    @display.visibe = @element.active?
   end
 
   # Update and return the widget (often a container filled with other widgets) to modify the element's settings.
   def editor
-    @editor ||= Gtk::Label.new(@element.title)
+    unless @editor
+      @editor = new_editor
+    end
+    update_editor_activity
+  end
+
+  private def new_editor
+    Gtk::Label.new(@element.title)
+  end
+
+  def update_editor
+    @editor = new_editor
+    update_editor_activity
+  end
+
+  def update_editor_activity
+    @editor.sensitive = @element.active?
+  end
+
+  def update
+    update_display
+    update_editor
+  end
+
+  def update_activity
+    update_activity_display
+    update_activity_editor
   end
 
   def self.set_help_wgt(help_wgt)
@@ -336,20 +364,20 @@ end # class ElementRenderer
 
 class SectionRenderer < ElementRenderer
 
-  private def create_display
+  private def new_display
     if @element.single_element?
       e = @element.first_element
       e.renderer.display
     else
       container = Gtk::VBox.new
       element.each_element do |e|
-        container.add(e.renderer.display) if e.active?
+        container.add(e.renderer.display)
       end
       container
     end
   end
   
-  def editor
+  private def new_editor
     if @element.single_element?
       e = @element.first_element
       e.renderer.editor
@@ -368,7 +396,10 @@ class SectionRenderer < ElementRenderer
         button = get_button.call
         button.add(e.renderer.editor)
         container.add(button)
-        button.signal_connect('clicked') { self.update_display }
+        button.signal_connect('clicked') do |b|
+          @element.active = b.active?
+          @element.renderer.update_activity
+        end
         button.signal_connect('focus') { @@help_wgt.text = e.help_text }
       end
       container
@@ -380,7 +411,11 @@ end # class SectionRenderer
 
 class SwitchRenderer < ElementRenderer
 
-  private def update_display
+  def update_display
+    update_activity_display
+  end
+
+  def update_editor
     nil
   end
 
@@ -389,27 +424,29 @@ end
 
 class FlagRenderer < ElementRenderer
 
-  class << self
-
-  private def create_display
+  private def new_display
     frame = Gtk::Frame(@element.title)
     section = @element.argument
     frame.add(section.renderer.display)
     frame
   end
 
-  private def update_display
+  def update_display
     @element.argument.renderer.update_display
+    update_activity_display
   end
 
-  def editor
+  private def new_editor
     frame = Gtk::Frame(@elemet.title)
     section = @element.argument
     frame.add(section.renderer.editor)
     frame
   end
 
-  end # class << self
+  def update_editor
+    @element.argument.renderer.update_editor
+    update_activity_editor
+  end
 
 end
 
