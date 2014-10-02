@@ -78,7 +78,7 @@ private
 
   def add_child(key, value)
     @children[key] << value
-    $l.debug self.to_s + " got new child: " + value.inspect
+    $l.debug self.to_s + " got new child: " + value.to_s
   end
 
 end # class CliDef
@@ -136,7 +136,7 @@ class Program < CliDef
   end
 
   def add_section(e)
-    @sections << Section.new(e)
+    @sections << Section.new_toplevel(e)
   end
 
   # must be passed a block that will be run once on every section.
@@ -210,15 +210,18 @@ class FileArgRenderer < ElementRenderer; end
 class Element
   
   RENDERER = ElementRenderer
-  attr_reader :title, :renderer
+  attr_reader :title
+  attr_accessor :active
 
-  def initialize(xml)
+  def initialize(xml, start_active = false)
     @title     = xml.attributes['title']
     @title     ||= xml.elements['title'].text if xml.elements['title']
-    $l.debug "initialize #{self.inspect} from #{xml}"
+    $l.debug "initialize #{self.inspect}"
     @description = xml.elements['description'].text if xml.elements['description']
     @helptext    = xml.elements['helptext'].text if xml.elements['helptext']
-    @renderer = self.class::RENDERER.new(self)
+    @renderer = nil
+    @active = (xml.attributes['default_active'] == "true")
+    @active = start_active if @active == nil
   end # Element.initialize
   
   def self.create(xml)
@@ -238,6 +241,14 @@ class Element
     end
   end # Element.create
 
+  def active?
+    active
+  end
+
+  def renderer
+    @renderer ||= self.class::RENDERER.new(self)
+  end
+
 end # class Element
 
 class Section < Element
@@ -246,7 +257,7 @@ class Section < Element
 
   RENDERER = SectionRenderer
 
-  def initialize(xml)
+  def initialize(xml, start_active = false)
     super
     # FIXME extract to method
     count = xml.attributes['count']
@@ -280,6 +291,13 @@ class Section < Element
     end
   end
 
+  def self.new_toplevel(xml)
+    s = new(xml, true)
+    s.active = true # FIXME shold be set accordingly by constructor
+    raise unless s.active?
+    s
+  end
+
   def first_element
     @elements.first
   end
@@ -299,6 +317,8 @@ class Switch < Element
   @@instances = {} # FIXME instances-hash must be section-specific
   def initialize(xml)
     super
+    @longname = nil
+    @shortname = nil
     @longname  = xml.elements['longname'].text if xml.elements['longname']
     if @longname
       raise "argement occurs multiple times: `#{@longname}'" if @@instances.key?(@longname)
@@ -316,6 +336,7 @@ end
 
 class Flag < Switch
   RENDERER = FlagRenderer
+  attr_reader :argument
   def initialize(xml)
     super
     if @longname

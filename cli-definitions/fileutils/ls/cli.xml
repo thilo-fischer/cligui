@@ -14,11 +14,15 @@
       <longname separator="=">--sort</longname>
       <description>sort by a different criterea than the name</description>
       <section title="sort criteria" count="1">
-        <switch>
-          <name>none</name>
+        <switch default_active="true">
+          <longname>none</longname>
           <description>do not sort; list entries in directory order</description>
         </switch>
-        <!-- extension -X, size -S, time -t, version -v</alternative> -->
+        <switch>
+          <longname>extension</longname>
+          <description>same as -X ...</description>
+        </switch>
+        <!-- size -S, time -t, version -v -->
       </section>
     </flag>
     <switch>

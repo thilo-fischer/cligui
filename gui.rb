@@ -36,7 +36,7 @@ class Window
   def pack_widgets(container, wgts = widgets)
     packed = FALSE
     current = wgts[:self]
-    $l.debug "packing #{current} into #{container}"
+    #$l.trace "packing #{current} into #{container}"
     wgts.each_pair do |key, value|
        case key
        when :self
@@ -51,13 +51,13 @@ class Window
        else
          case value
          when Hash
-           $l.debug "pack #{key} #{value[:self]} from #{value} into #{current}"
+           #$l.trace "pack #{key} #{value[:self]} from #{value} into #{current}"
            pack_widgets(current, value)
          when Proc
-           $l.debug "yield #{key} #{value}"
+           #$l.trace "yield #{key} #{value}"
            value.yield(current)
          when Gtk::Widget
-           $l.debug "adding #{key} #{value} to #{current}"
+           #$l.trace "adding #{key} #{value} to #{current}"
            current.add(value) 
          else
            raise "Don't know how to handle " + value.inspect
@@ -70,6 +70,7 @@ class Window
   end
 
   def show
+    $l.debug "@window.show_all (#{caller[0]})"
     @window.show_all
     Gtk.main
   end # show
@@ -149,7 +150,7 @@ class SelectionWindow < Window
   end
   
   def add_to_treestore(clidef, treestore, ts_iter = nil)
-    $l.debug "add to treestore: " + clidef.title
+    #$l.trace "add to treestore: " + clidef.title
     ts_iter = treestore.append(ts_iter)
     ts_iter[TITLE_IDX] = clidef.title
     ts_iter[DESC_IDX]  = clidef.description
@@ -262,7 +263,8 @@ class CommandWindow < Window
         f = Gtk::Frame.new(s.title)
         b = Gtk::ToggleButton.new
         b.add(f)
-        @button_section_map[b] = s
+        f.add(s.renderer.display)
+        @button_section_map[b] = s # FIXME in use ?!
         @cmd_box.pack_start(b)
         b.signal_connect('toggled') do |w|
           # FIXME toggled will be signaled to button also when calling active=, so two buttons will receive the toggled signal when "switching" activity from one button to another
@@ -285,7 +287,8 @@ class CommandWindow < Window
       section = @button_section_map[@current_button]
       display_frame = @current_button.children.first
       @argedit_box.each { |child| @argedit_box.remove(child) } # TODO Would it be cheaper to just throw away the argedit_box and create a new one?
-      @argedit_box.add(section.renderer.editor)
+      #@argedit_box.add(section.renderer.editor)
+      @argedit_box.add_with_viewport(section.renderer.editor) # FIXME
     else
       @help_text.text = TEXT_NO_SECTION_SELECTED 
     end
@@ -297,66 +300,100 @@ class ElementRenderer
 
   # Create an object to handle the presentation of element within the GUI.
   def initialize(element)
+    $l.debug("initialize #{self} for #{element}")
     @element = element
     @editor = nil
     @display = nil
   end
 
+  def trace_methodcall
+    $l.debug "#{caller[0]} invoked at #{self} to render #{@element}:#{@element.title} (#{if @element.active? then "active" else "inactive" end})"
+  end
+
   # The widget (often a container filled with other widgets) displaying the element's current settings.
   # Create the widget if not yet existing.
   def display
+    trace_methodcall
     unless @display
       @display = new_display
-      @display.no_show_all = true
+      @display.show_all
+      #@display.no_show_all = true # FIXME
     end
     update_display_activity
+    @display
   end
 
   private def new_display
-    Gtk::Label(@element.title)
+    trace_methodcall
+    Gtk::Label.new(@element.title)
   end
 
+  # Shall be overridden by derived classes. Implementation is very generic, but neither accurate nor efficient.
   def update_display
+    trace_methodcall
+    parent = @display.parent
+    parent.remove(@display)
     @display = new_display
+    parent.add(@display)
     update_display_activity
   end
 
   def update_display_activity
-    @display.visibe = @element.active?
+    trace_methodcall
+    # FIXME
+    #@display.visibe = @element.active?
+    if @element.active?
+      @display.show_all
+    else
+      @display.hide_all
+    end
   end
 
   # Update and return the widget (often a container filled with other widgets) to modify the element's settings.
   def editor
+    trace_methodcall
     unless @editor
       @editor = new_editor
     end
+    @editor.show_all
     update_editor_activity
+    @editor
   end
 
   private def new_editor
+    trace_methodcall
     Gtk::Label.new(@element.title)
   end
 
+  # Shall be overridden by derived classes. Implementation is very generic, but neither accurate nor efficient.
   def update_editor
+    trace_methodcall
+    parent = @editor.parent
+    parent.remove(@editor)
     @editor = new_editor
+    parent.add(@editor)
     update_editor_activity
   end
 
   def update_editor_activity
+    trace_methodcall
     @editor.sensitive = @element.active?
   end
 
   def update
+    trace_methodcall
     update_display
     update_editor
   end
 
   def update_activity
-    update_activity_display
-    update_activity_editor
+    trace_methodcall
+    update_display_activity
+    update_editor_activity
   end
 
   def self.set_help_wgt(help_wgt)
+    trace_methodcall
     @@help_wgt = help_wgt
   end
 
@@ -365,12 +402,13 @@ end # class ElementRenderer
 class SectionRenderer < ElementRenderer
 
   private def new_display
+    trace_methodcall
     if @element.single_element?
       e = @element.first_element
       e.renderer.display
     else
       container = Gtk::VBox.new
-      element.each_element do |e|
+      @element.each_element do |e|
         container.add(e.renderer.display)
       end
       container
@@ -378,6 +416,7 @@ class SectionRenderer < ElementRenderer
   end
   
   private def new_editor
+    trace_methodcall
     if @element.single_element?
       e = @element.first_element
       e.renderer.editor
@@ -386,19 +425,22 @@ class SectionRenderer < ElementRenderer
       radio_group_button = nil
       if @element.count_min == 1 and @element.count_max == 1
         get_button = Proc.new do
-          b = Gtk::RadioButton(radio_group_button)
+          b = Gtk::RadioButton.new(radio_group_button)
           radio_group_button ||= b
+          b
         end
       else
         get_button = Proc.new { Gtk::CheckButton.new }
       end
       @element.each_element do |e|
         button = get_button.call
+        $l.debug("adding #{e} ...")
+        $l.debug("adding #{e} as #{e.renderer.editor} to #{container} of #{@element}")
         button.add(e.renderer.editor)
         container.add(button)
         button.signal_connect('clicked') do |b|
-          @element.active = b.active?
-          @element.renderer.update_activity
+          e.active = b.active?
+          e.renderer.update_activity
         end
         button.signal_connect('focus') { @@help_wgt.text = e.help_text }
       end
@@ -412,10 +454,17 @@ end # class SectionRenderer
 class SwitchRenderer < ElementRenderer
 
   def update_display
-    update_activity_display
+    trace_methodcall
+    update_display_activity
   end
 
   def update_editor
+    trace_methodcall
+    nil
+  end
+
+  def update_editor_activity
+    trace_methodcall
     nil
   end
 
@@ -425,27 +474,36 @@ end
 class FlagRenderer < ElementRenderer
 
   private def new_display
-    frame = Gtk::Frame(@element.title)
+    trace_methodcall
+    frame = Gtk::Frame.new(@element.title)
     section = @element.argument
     frame.add(section.renderer.display)
     frame
   end
 
   def update_display
+    trace_methodcall
     @element.argument.renderer.update_display
-    update_activity_display
+    update_display_activity
   end
 
   private def new_editor
-    frame = Gtk::Frame(@elemet.title)
+    trace_methodcall
+    frame = Gtk::Frame.new(@element.title)
     section = @element.argument
     frame.add(section.renderer.editor)
     frame
   end
 
   def update_editor
+    trace_methodcall
     @element.argument.renderer.update_editor
-    update_activity_editor
+    update_editor_activity
+  end
+
+  def update_editor_activity
+    trace_methodcall
+    nil
   end
 
 end
