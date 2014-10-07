@@ -317,7 +317,7 @@ class ElementRenderer
     unless @display
       @display = new_display
       @display.show_all
-      #@display.no_show_all = true # FIXME
+      @display.no_show_all = true # FIXME
     end
     update_display_activity
     @display
