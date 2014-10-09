@@ -184,14 +184,22 @@ class CommandWindow < Window
       :self => Gtk::VBox.new,
       :title => {
           :self => Gtk::Label.new,
+          :packing => Proc.new { |c, w| c.pack_start(w, FALSE, true) },
           :setup => Proc.new do |w|
               w.text = @clidef.title
+              w.set_markup("<span size='xx-large'>#{@clidef.title}</span>") # FIXME use set_attributes instead of markup
+              w.set_xalign(0.1)
+              #w.set_attributes()
           end,
       },
       :description => {
           :self => Gtk::Label.new,
+          :packing => Proc.new { |c, w| c.pack_start(w, false, FALSE) },
           :setup => Proc.new do |w|
               w.text = @clidef.description
+              w.set_markup("<span size='large'>#{@clidef.description}\n</span>") # FIXME use set_attributes instead of markup
+              w.set_xalign(0.2)
+              #w.set_attributes()
           end,
       },
       :scrolled_win => {
@@ -226,6 +234,11 @@ class CommandWindow < Window
               :setup => Proc.new { |w| @help_text = w },
           },
         },
+      },
+      :cmdentry => {
+          :self => Gtk::Entry.new,
+          :packing => Proc.new { |container, w| container.pack_start(w, FALSE, FALSE) },
+          :setup => Proc.new { |w| w.editable = false }, # TODO allow entering text, parse the text entered and update visual command line builder accordingly
       },
       :btnbox => {
           :self => Gtk::HBox.new,
