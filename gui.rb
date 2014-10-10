@@ -230,15 +230,23 @@ class CommandWindow < Window
               scrolled_win.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC) 
           end,
           :help_text => {
-              :self => Gtk::Label.new(TEXT_NO_SECTION_SELECTED),
-              :setup => Proc.new { |w| @help_text = w },
+              :self => Gtk::TextView.new,
+              :setup => Proc.new do |w|
+                w.wrap_mode = Gtk::TextTag::WRAP_WORD
+                w.editable = false
+                @help_buf = w.buffer
+                @help_buf.text = TEXT_NO_SECTION_SELECTED
+              end,
           },
         },
       },
       :cmdentry => {
           :self => Gtk::Entry.new,
           :packing => Proc.new { |container, w| container.pack_start(w, FALSE, FALSE) },
-          :setup => Proc.new { |w| w.editable = false }, # TODO allow entering text, parse the text entered and update visual command line builder accordingly
+          :setup => Proc.new do |w|
+              w.editable = false # TODO allow entering text, parse the text entered and update visual command line builder accordingly
+              @cmdentry = w
+          end,
       },
       :btnbox => {
           :self => Gtk::HBox.new,
@@ -271,6 +279,7 @@ class CommandWindow < Window
     @button_section_map = {}
     @current_button = nil
     super()
+    ElementRenderer.cmdwindow = self
     @clidef.each_section do |s|
         $l.debug "pack display button for section `#{s.title}'"
         f = Gtk::Frame.new(s.title)
@@ -292,19 +301,28 @@ class CommandWindow < Window
           refresh_argumentbox
         end
     end
+    update_cmdentry
   end
 
   def refresh_argumentbox
     if @current_button
-      @help_text.text = TEXT_SECTION_SELECTED
+      self.help_text = TEXT_SECTION_SELECTED
       section = @button_section_map[@current_button]
       display_frame = @current_button.children.first
       @argedit_box.each { |child| @argedit_box.remove(child) } # TODO Would it be cheaper to just throw away the argedit_box and create a new one?
       #@argedit_box.add(section.renderer.editor)
       @argedit_box.add_with_viewport(section.renderer.editor) # FIXME
     else
-      @help_text.text = TEXT_NO_SECTION_SELECTED 
+      self.help_text = TEXT_NO_SECTION_SELECTED 
     end
+  end
+
+  def update_cmdentry
+    @cmdentry.text = @clidef.cmdline
+  end
+
+  def help_text=(text)
+    @help_buf.text = text
   end
 
 end # class CommandWindow
@@ -354,12 +372,12 @@ class ElementRenderer
   def update_display_activity
     trace_methodcall
     # FIXME
-    #@display.visibe = @element.active?
-    if @element.active?
-      @display.show_all
-    else
-      @display.hide_all
-    end
+    @display.visible = @element.active?
+#if @element.active?
+#@display.show_all
+#else
+#@display.hide_all
+#end
   end
 
   # Update and return the widget (often a container filled with other widgets) to modify the element's settings.
@@ -405,9 +423,12 @@ class ElementRenderer
     update_editor_activity
   end
 
-  def self.set_help_wgt(help_wgt)
-    trace_methodcall
-    @@help_wgt = help_wgt
+  def self.cmdwindow=(w)
+    @@cmdwindow = w
+  end
+
+  def self.cmdwindow # FIXME child classes use @@cmdwindow directly
+    @@cmdwindow
   end
 
 end # class ElementRenderer
@@ -454,15 +475,15 @@ class SectionRenderer < ElementRenderer
         button.signal_connect('clicked') do |b|
           e.active = b.active?
           e.renderer.update_activity
+          @@cmdwindow.update_cmdentry
         end
-        button.signal_connect('focus') { @@help_wgt.text = e.help_text }
+        button.signal_connect('focus') { @@cmdwindow.help_text = e.help_text }
       end
       container
     end
   end
 
 end # class SectionRenderer
-
 
 class SwitchRenderer < ElementRenderer
 

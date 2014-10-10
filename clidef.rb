@@ -144,8 +144,13 @@ class Program < CliDef
     @sections.each { |s| yield(s) }
   end
 
-  def run_command
-    raise "todo"
+  def cmdline
+    line = "#{@executable} "
+    each_section do |s|
+      text = s.to_cmdline
+      line += text + " " unless text.empty?
+    end
+    line.rstrip
   end
 
 end # class Program
@@ -310,6 +315,15 @@ class Section < Element
     @elements.each { |e| yield(e) }
   end
 
+  def to_cmdline
+    line = ""
+    each_element do |e|
+      text = e.to_cmdline
+      line += text + " " unless text.empty?
+    end
+    line.rstrip
+  end
+
 end # class Section
 
 class Switch < Element
@@ -332,6 +346,15 @@ class Switch < Element
       @title ||= @shortname
     end
   end
+
+  def to_cmdline
+    if @active
+      @longname || @shortname
+    else
+      ""
+    end
+  end
+
 end
 
 class Flag < Switch
@@ -349,13 +372,37 @@ class Flag < Switch
     end
     @argument = Section.new(xml.elements['section'])
   end
+
+  def to_cmdline
+    if @active
+      if @longname
+        @longname + @longname_sep
+      else
+        @shortname + @shortname_sep
+      end + @argument.to_cmdline
+    else
+      ""
+    end
+  end
+
 end
 
 class Argument < Element
   RENDERER = ArgumentRenderer
   def initialize(xml)
     super
-    # ... (TODO)
+    @raw_text = xml.attributes['default'] || ""
+  end
+  def escaped_text
+    if @raw_text.empty?
+      ""
+    else
+      # TODO really escape!
+      '"' + @raw_text + '"'
+    end
+  end
+  def to_cmdline
+    escaped_text
   end
 end
 
