@@ -7,8 +7,7 @@
 
 require 'logger'
 
-require_relative 'clidef'
-require_relative 'gui'
+require_relative '../lib/clig.rb'
 
 $l = Logger.new(STDOUT)
 if $DEBUG
