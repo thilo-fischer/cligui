@@ -128,7 +128,7 @@ class CommandWindow < Window
         b = Gtk::ToggleButton.new
         f = Gtk::Frame.new(s.title)
         b.add(f)
-        f.add(s.renderer.display)
+        f.pack_start(s.renderer.display)
         #@button_section_map[b] = s # FIXME in use ?!
         b.signal_connect('toggled') do |w|
           # FIXME extract method
