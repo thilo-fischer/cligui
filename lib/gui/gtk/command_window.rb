@@ -67,7 +67,7 @@ class CommandWindow < Window
           :setup => Proc.new do |scrolled_win|
               scrolled_win.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC) 
           end,
-          :help_text => {
+          :help => {
               :self => Gtk::TextView.new,
               :setup => Proc.new do |w|
                 w.wrap_mode = Gtk::TextTag::WRAP_WORD
@@ -115,43 +115,53 @@ class CommandWindow < Window
   def initialize(clidef)
     @clidef = clidef
     @button_section_map = {}
-    @current_button = nil
+    @current_button, @current_section, @current_editor = nil
     super()
     ElementRenderer.cmdwindow = self
-    @clidef.each_section do |s|
-        $l.debug "pack display button for section `#{s.title}'"
-        f = Gtk::Frame.new(s.title)
-        b = Gtk::ToggleButton.new
-        b.add(f)
-        f.add(s.renderer.display)
-        @button_section_map[b] = s # FIXME in use ?!
-        @cmd_box.pack_start(b)
-        b.signal_connect('toggled') do |w|
-          # FIXME toggled will be signaled to button also when calling active=, so two buttons will receive the toggled signal when "switching" activity from one button to another
-          puts "#{w} toggled"
-          if w.active?
-            @current_button.active = FALSE if @current_button
-            @current_button = w
-          else
-            raise "Invalid state" unless @current_button == w
-            @current_button = nil
-          end
-          refresh_argumentbox
-        end
-    end
+    setup_element_wigets
     update_cmdentry
   end
 
-  def refresh_argumentbox
-    if @current_button
-      self.help_text = TEXT_SECTION_SELECTED
-      section = @button_section_map[@current_button]
-      display_frame = @current_button.children.first
-      @argedit_box.each { |child| @argedit_box.remove(child) } # TODO Would it be cheaper to just throw away the argedit_box and create a new one?
-      #@argedit_box.add(section.renderer.editor)
-      @argedit_box.add_with_viewport(section.renderer.editor) # FIXME
+  private def setup_element_wigets
+    @clidef.each_section do |s|
+        $l.debug "pack display button for section `#{s.title}'"
+        b = Gtk::ToggleButton.new
+        f = Gtk::Frame.new(s.title)
+        b.add(f)
+        f.add(s.renderer.display)
+        #@button_section_map[b] = s # FIXME in use ?!
+        b.signal_connect('toggled') do |w|
+          # FIXME extract method
+          # FIXME toggled will be signaled to button also when calling active=, so two buttons will receive the toggled signal when "switching" activity from one button to another
+          $l.debug "#{w} toggled, now #{w.active? ? "active" : "inactive"}, @current_button is #{@current_button || "nil"}"
+          if w.active?
+            @current_button.active = false if @current_button
+            @current_button = w
+            switch_argumentbox(s)
+          else
+            raise "Invalid state" unless @current_button == w
+            @current_button = nil
+            switch_argumentbox(nil)
+          end
+          #refresh_argumentbox
+        end
+        @cmd_box.pack_start(b)
+    end
+  end
+
+  def switch_argumentbox(section)
+    if section == nil
+      @current_section.renderer.editor.hide if @current_section
+      self.helptext = TEXT_NO_SECTION_SELECTED 
+    elsif section == @current_section
+      # TODO update section's editor, but currently not a usecase for this method
     else
-      self.help_text = TEXT_NO_SECTION_SELECTED 
+      @current_section.renderer.editor.hide if @current_section
+      @current_section = section
+      e = @current_section.renderer.editor
+      @argedit_box.add_with_viewport(e) unless e.parent
+      e.show
+      self.helptext = TEXT_SECTION_SELECTED
     end
   end
 
@@ -159,8 +169,8 @@ class CommandWindow < Window
     @cmdentry.text = @clidef.cmdline
   end
 
-  def help_text=(text)
-    @help_buf.text = text
+  def helptext=(text)
+    @help_buf.text = text || ""
   end
 
 end # class CommandWindow

@@ -20,6 +20,11 @@ class Flag < Switch
     @argument = Section.new(xml.elements['section'])
   end
 
+  def active=(val)
+    super
+    @argument.active = val
+  end
+
   def to_cmdline
     if @active
       if @longname

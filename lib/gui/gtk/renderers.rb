@@ -159,7 +159,7 @@ class SectionRenderer < ElementRenderer
           e.renderer.update_activity
           @@cmdwindow.update_cmdentry
         end
-        button.signal_connect('focus') { @@cmdwindow.help_text = e.help_text }
+        button.signal_connect('focus') { @@cmdwindow.helptext = e.helptext }
       end
       container
     end
@@ -184,7 +184,7 @@ class SwitchRenderer < ElementRenderer
     nil
   end
 
-end
+end # SwitchRenderer
 
 
 class FlagRenderer < ElementRenderer
@@ -192,35 +192,38 @@ class FlagRenderer < ElementRenderer
   private def new_display
     trace_methodcall
     frame = Gtk::Frame.new(@element.title)
-    section = @element.argument
-    frame.add(section.renderer.display)
+    frame.add(@element.argument.renderer.display)
     frame
   end
 
   def update_display
     trace_methodcall
-    @element.argument.renderer.update_display
     update_display_activity
+    @element.argument.renderer.update_display
+  end
+
+  def update_display_activity
+    super
+    @element.argument.renderer.update_display_activity
   end
 
   private def new_editor
     trace_methodcall
     frame = Gtk::Frame.new(@element.title)
-    section = @element.argument
-    frame.add(section.renderer.editor)
+    frame.add(@element.argument.renderer.editor)
     frame
   end
 
   def update_editor
     trace_methodcall
-    @element.argument.renderer.update_editor
     update_editor_activity
+    @element.argument.renderer.update_editor
   end
 
   def update_editor_activity
-    trace_methodcall
-    nil
+    super
+    @element.argument.renderer.update_editor_activity
   end
 
-end
+end # FlagRenderer
 

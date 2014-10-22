@@ -10,7 +10,7 @@ class FileArg <  Argument; end
 class Element
   
   RENDERER = ElementRenderer
-  attr_reader :title
+  attr_reader :title, :description, :helptext
   attr_accessor :active
 
   def initialize(xml, start_active = false)
