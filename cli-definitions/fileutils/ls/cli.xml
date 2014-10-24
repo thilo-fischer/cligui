@@ -12,7 +12,7 @@
     <flag>
       <!-- implies: argument="mandatory", alterative: argument="optional" -->
       <longname separator="=">--sort</longname>
-      <description>sort by a different criterea than the name</description>
+      <description>sort by a different criterea other than sorting alphabetically by name</description>
       <section title="sort criteria" count="1">
         <switch default_active="true">
           <longname>none</longname>
@@ -47,7 +47,7 @@
     -->
   </section>
   <section title="files &amp; directories" count="0..n">
-    <file type="bcdpflsD" mustexist="false"/>
+    <file type="bcdpflsD" mustexist="false" count="0..n"/>
     <!--
     alias type="*" type="bcdpflsD"
     make type="*" the default

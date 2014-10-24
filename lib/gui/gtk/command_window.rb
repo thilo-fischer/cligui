@@ -72,6 +72,8 @@ class CommandWindow < Window
               :setup => Proc.new do |w|
                 w.wrap_mode = Gtk::TextTag::WRAP_WORD
                 w.editable = false
+                w.cursor_visible = false
+                w.left_margin, w.right_margin = 8, 8
                 @help_buf = w.buffer
                 @help_buf.text = TEXT_NO_SECTION_SELECTED
               end,
@@ -128,7 +130,7 @@ class CommandWindow < Window
         b = Gtk::ToggleButton.new
         f = Gtk::Frame.new(s.title)
         b.add(f)
-        f.pack_start(s.renderer.display)
+        f.add(s.renderer.display)
         #@button_section_map[b] = s # FIXME in use ?!
         b.signal_connect('toggled') do |w|
           # FIXME extract method

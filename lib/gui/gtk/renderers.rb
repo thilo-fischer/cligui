@@ -125,7 +125,7 @@ class SectionRenderer < ElementRenderer
     else
       container = Gtk::VBox.new
       @element.each_element do |e|
-        container.add(e.renderer.display)
+        container.pack_start(e.renderer.display, false, false)
       end
       container
     end
@@ -227,3 +227,42 @@ class FlagRenderer < ElementRenderer
 
 end # FlagRenderer
 
+class ArgumentRenderer
+
+  private def new_display
+    trace_methodcall
+    frame = Gtk::Frame.new(@element.title)
+    frame.add(@element.argument.renderer.display)
+    frame
+  end
+
+  def update_display
+    trace_methodcall
+    update_display_activity
+    @element.argument.renderer.update_display
+  end
+
+  def update_display_activity
+    super
+    @element.argument.renderer.update_display_activity
+  end
+
+  private def new_editor
+    trace_methodcall
+    frame = Gtk::Frame.new(@element.title)
+    frame.add(@element.argument.renderer.editor)
+    frame
+  end
+
+  def update_editor
+    trace_methodcall
+    update_editor_activity
+    @element.argument.renderer.update_editor
+  end
+
+  def update_editor_activity
+    super
+    @element.argument.renderer.update_editor_activity
+  end
+
+end # ArgumentRenderer
