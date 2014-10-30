@@ -4,9 +4,12 @@ class SwitchRenderer < ElementRenderer; end
 class Element; end
 
 class Switch < Element
+
   RENDERER = SwitchRenderer
+
   @@instances = {} # FIXME instances-hash must be section-specific
-  def initialize(xml)
+  
+  def initialize(xml, start_active = false)
     super
     @longname = nil
     @shortname = nil

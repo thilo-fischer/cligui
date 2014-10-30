@@ -13,33 +13,70 @@ class Element
   attr_reader :title, :description, :helptext
   attr_accessor :active
 
-  def initialize(xml, start_active = false)
+  def initialize(xml, start_active = false, default_count = [1, 1])
     @title     = xml.attributes['title']
     @title     ||= xml.elements['title'].text if xml.elements['title']
     $l.debug "initialize #{self.inspect}"
     @description = xml.elements['description'].text if xml.elements['description']
     @helptext    = xml.elements['helptext'].text if xml.elements['helptext']
+
+    count_spec = xml.attributes['count'] || default_count
+    set_count(count_spec)
+
     @renderer = nil
-    @active = (xml.attributes['default_active'] == "true")
-    @active = start_active if @active == nil
+    xml_active = xml.attributes['default_active']
+    if xml_active != nil
+      @active = (xml_active == "true")
+    else
+      @active = start_active
+    end
   end # Element.initialize
   
-  def self.create(xml)
+  def self.create(xml, start_active = false)
     case xml.name
     when "section"
-      Section.new(xml)
+      Section.new(xml, start_active)
     when "switch"
-      Switch.new(xml)
+      Switch.new(xml, start_active)
     when "flag"
-      Flag.new(xml)
+      Flag.new(xml, start_active)
     when "argument"
-      Argument.new(xml)
+      Argument.new(xml, start_active)
     when "file"
-      FileArg.new(xml)
+      FileArg.new(xml, start_active)
     else
       raise "Invalid XML element: `#{xml.name}'"
     end
   end # Element.create
+
+  private def set_count(count_spec)
+    case count_spec
+    when Array
+      raise "invalid array: #{count_spec}" unless count_spec.length == 2
+      @count_min = count_spec[0]
+      @count_max = count_spec[1]
+    when /^\*$/
+      @count_min = 0
+      @count_max = -1
+    when /^\+$/
+      @count_min = 1
+      @count_max = -1
+    when /^\d+$/
+      @count_min = Integer(count_spec)
+      @count_max = @count_min
+    when /^(\d+)\.\.(\d+|\*|n)$/
+      @count_min = Integer(Regexp.last_match(1))
+      max = Regexp.last_match(2)
+      @count_max = case max
+      when "*", "n"
+        -1
+      else
+        Integer(max)
+      end
+    else
+      raise "Invalid count specification in .xml file: `#{count_spec}'"
+    end
+  end
 
   def active?
     active

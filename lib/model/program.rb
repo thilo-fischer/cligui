@@ -39,7 +39,7 @@ class Program < CliDef
   end
 
   def add_section(e)
-    @sections << Section.new_toplevel(e)
+    @sections << Section.new(e, true)
   end
 
   # must be passed a block that will be run once on every section.

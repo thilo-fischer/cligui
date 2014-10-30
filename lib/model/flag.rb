@@ -7,7 +7,7 @@ class Switch < Element; end
 class Flag < Switch
   RENDERER = FlagRenderer
   attr_reader :argument
-  def initialize(xml)
+  def initialize(xml, start_active = false)
     super
     if @longname
       @longname_sep  = xml.elements['longname' ].attributes['separator']

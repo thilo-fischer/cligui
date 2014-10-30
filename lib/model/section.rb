@@ -10,44 +10,47 @@ class Section < Element
   RENDERER = SectionRenderer
 
   def initialize(xml, start_active = false)
-    super
-    # FIXME extract to method
-    count = xml.attributes['count']
-    case count
-    when /^\*$/
-      @count_min = 0
-      @count_max = -1
-    when /^\+$/
-      @count_min = 1
-      @count_max = -1
-    when /^\d+$/
-      @count_min = Integer(count)
-      @count_max = @count_min
-    when /^(\d+)\.\.(\d+|\*|n)$/
-      @count_min = Integer(Regexp.last_match(1))
-      max = Regexp.last_match(2)
-      @count_max = case max
-      when "*", "n"
-        -1
-      else
-        Integer(max)
-      end
-    else
-      raise "Invalid count specification in .xml file: `#{count}'"
-    end
+    super(xml, start_active, [0, -1])
 
     @elements = []
 
+    count_active = 0
     xml.elements.each do |xe|
-      @elements << Element.create(xe)
+      new_element = Element.create(xe)
+      count_active += 1 if new_element.active?
+      @elements << new_element
     end
+
+    check_active_elements(count_active)
   end
 
-  def self.new_toplevel(xml)
-    s = new(xml, true)
-    s.active = true # FIXME shold be set accordingly by constructor
-    raise unless s.active?
-    s
+  def check_active_elements(count_active)
+    if single_element?
+      first_element.active = true
+    elsif count_active < @count_min
+      if @count_min == 1
+        first_element.active = true
+        $l.warn "No element configured as default_active in section #{this}. Selected the first element (#{first_element}) as active element."
+      else
+        $l.warn "Too few elements in section #{this} configured default_active (#{count_active} configured, #{@count_min} active elements required)."
+      end
+    elsif count_active > @count_max and @count_max > 0
+      if @count_max == 1
+        first_active = nil
+        @elements.for_each do |e|
+          if e.active?
+            if first_active
+              e.active = false
+            else
+              first_active = e
+            end
+          end
+        end
+        $l.warn "#{count_active} elements configured as default_active in section #{this}. Deactivated all but the first active element (#{first_active})."
+      else
+        $l.warn "Too many elements in section #{this} configured default_active (#{count_active} configured, #{@count_max} active elements allowed)."
+      end
+    end
   end
 
   def first_element

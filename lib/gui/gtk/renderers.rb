@@ -227,42 +227,40 @@ class FlagRenderer < ElementRenderer
 
 end # FlagRenderer
 
-class ArgumentRenderer
+class ArgumentRenderer < ElementRenderer
 
   private def new_display
     trace_methodcall
-    frame = Gtk::Frame.new(@element.title)
-    frame.add(@element.argument.renderer.display)
-    frame
-  end
-
-  def update_display
-    trace_methodcall
-    update_display_activity
-    @element.argument.renderer.update_display
-  end
-
-  def update_display_activity
-    super
-    @element.argument.renderer.update_display_activity
+    @liststore ||= Gtk::ListStore.new(String)
+    @element.raw_args.each do |a|
+      listitem = @liststore.append
+      listitem[0] = a
+    end
+    view = Gtk::TreeView.new(@liststore)
+    view.headers_visible = false
+    cell_renderer = Gtk::CellRendererText.new
+    cell_renderer.editable = true
+    cell_renderer.signal_connect("edited") do |r|
+      $l.debug "edited #{r}, text #{r.text}"
+    end
+    view.append_column(Gtk::TreeViewColumn.new("Arguments", cell_renderer, :text => 0))
+    view
   end
 
   private def new_editor
     trace_methodcall
-    frame = Gtk::Frame.new(@element.title)
-    frame.add(@element.argument.renderer.editor)
-    frame
-  end
-
-  def update_editor
-    trace_methodcall
-    update_editor_activity
-    @element.argument.renderer.update_editor
-  end
-
-  def update_editor_activity
-    super
-    @element.argument.renderer.update_editor_activity
+    box = Gtk::HBox.new
+    box.pack_start(new_display, true, true)
+    buttons = Gtk::VButtonBox.new
+    buttons.layout_style = Gtk::ButtonBox::START
+    box.pack_start(buttons, false, false)
+    addBtn = Gtk::Button.new("+") 
+    delBtn = Gtk::Button.new("-")
+    rstBtn = Gtk::Button.new("0")
+    buttons.add(addBtn)
+    buttons.add(delBtn)
+    buttons.add(rstBtn)
+    box
   end
 
 end # ArgumentRenderer
