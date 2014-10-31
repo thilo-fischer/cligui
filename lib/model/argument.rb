@@ -13,7 +13,7 @@ class Argument < Element
     if xml.attributes['default']
       @raw_args << xml.attributes['default']
     end
-    xml.elements.each do e
+    xml.elements.each do |e|
       raise "invalid child element of argument" unless e.name == "default" # todo This could also be checked validating the XML with a DTD.
       @raw_args << e.text
     end

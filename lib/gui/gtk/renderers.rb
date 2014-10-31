@@ -229,19 +229,48 @@ end # FlagRenderer
 
 class ArgumentRenderer < ElementRenderer
 
+  private def model
+    unless @model
+      @model ||= Gtk::ListStore.new(String)
+      @element.raw_args.each do |a|
+        listitem = @model.append
+        listitem[0] = a
+      end
+      @model.signal_connect("row-changed")  { |model, path, iter| update_element(iter) }
+      @model.signal_connect("row-inserted") { |model, path, iter| update_element }
+      @model.signal_connect("row-deleted")  { |model, path, iter| update_element }
+      @model.signal_connect("rows-reordered") { update_element }
+    end
+    @model
+  end
+
+  private def update_model
+    # destroy model and recreate (implementation shortcut ...)
+    @model = nil
+    model
+  end
+
+  # changepos May be provided to specify the row(s) in which the model was updated and to restrict element update for performance reasons to only these items. May be a TreePath, TreeIter, integer number, a range between two of these or an array containing a combination of the beforementioned -- TODO evaluate changepos
+  private def update_element(changepos = nil)
+    # destroy array and recreate (implementation shortcut ...)
+    @element.raw_args = []
+    @model.each { |model, path, iter| @element.raw_args << iter[0] }
+    @@cmdwindow.update_cmdentry
+  end
+
   private def new_display
     trace_methodcall
-    @liststore ||= Gtk::ListStore.new(String)
-    @element.raw_args.each do |a|
-      listitem = @liststore.append
-      listitem[0] = a
-    end
-    view = Gtk::TreeView.new(@liststore)
+    view = Gtk::TreeView.new(model)
     view.headers_visible = false
+    view.selection.mode = Gtk::SELECTION_SINGLE
+    view.reorderable = true
     cell_renderer = Gtk::CellRendererText.new
     cell_renderer.editable = true
-    cell_renderer.signal_connect("edited") do |r|
-      $l.debug "edited #{r}, text #{r.text}"
+    # TODO incomplete API doc for Gtk::CellRendererText signal edited (only 1 parameter documented)
+    cell_renderer.signal_connect("edited") do |renderer, path, new_text|
+      iter = @model.get_iter(path)
+      iter[0] = new_text
+      #update_element(path) => done via signal row-changed
     end
     view.append_column(Gtk::TreeViewColumn.new("Arguments", cell_renderer, :text => 0))
     view
@@ -250,16 +279,44 @@ class ArgumentRenderer < ElementRenderer
   private def new_editor
     trace_methodcall
     box = Gtk::HBox.new
-    box.pack_start(new_display, true, true)
+    view = new_display
+    box.pack_start(view, true, true)
     buttons = Gtk::VButtonBox.new
     buttons.layout_style = Gtk::ButtonBox::START
     box.pack_start(buttons, false, false)
+    
     addBtn = Gtk::Button.new("+") 
-    delBtn = Gtk::Button.new("-")
-    rstBtn = Gtk::Button.new("0")
+    addBtn.signal_connect("clicked") do
+      selected = view.selection.selected
+      if selected
+        iter = @model.insert_after(selected)
+      else
+        iter = @model.append
+      end
+      iter[0] = "new argument"
+      view.grab_focus
+      view.set_cursor(iter.path, view.get_column(0), true)
+    end
     buttons.add(addBtn)
+    
+    delBtn = Gtk::Button.new("-")
+    delBtn.signal_connect("clicked") do
+      iter = view.selection.selected
+# TODO msgbox if no selection
+      @model.remove(iter)
+      #update_element => done via signal row-changed
+    end
     buttons.add(delBtn)
+
+    rstBtn = Gtk::Button.new("0")
+    rstBtn.signal_connect("clicked") do
+      @model.clear
+      update_element # => necessary? row-deleted callback invoked for all rows?
+    end
     buttons.add(rstBtn)
+
+# TODO add arguments from clipboard button
+
     box
   end
 

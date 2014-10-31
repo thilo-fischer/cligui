@@ -47,7 +47,7 @@
     -->
   </section>
   <section title="files &amp; directories" count="0..n">
-    <file type="bcdpflsD" mustexist="false" count="0..n"/>
+    <file type="bcdpflsD" mustexist="false" count="0..n" default=".">
     <!--
     alias type="*" type="bcdpflsD"
     make type="*" the default
@@ -61,5 +61,9 @@
               s      socket
               D      door (Solaris)
     -->
+      <default>..</default>
+      <default>foo</default>
+      <default>bar</default>
+    </file>
   </section>
 </command>
