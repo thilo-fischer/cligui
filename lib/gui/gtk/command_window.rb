@@ -59,8 +59,13 @@ class CommandWindow < Window
           :self => Gtk::ScrolledWindow.new,
           :setup => Proc.new do |scrolled_win|
               scrolled_win.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC) 
-              @argedit_box = scrolled_win
           end,
+          :viewport => {
+              :self => Gtk::Viewport.new(nil, nil),
+              :setup => Proc.new do |vp|
+                  @argedit_vp = vp
+              end,
+            },
         },
         :scrolled_win_help => {
           :self => Gtk::ScrolledWindow.new,
@@ -156,12 +161,12 @@ class CommandWindow < Window
       @current_section.renderer.editor.hide if @current_section
       self.helptext = TEXT_NO_SECTION_SELECTED 
     elsif section == @current_section
-      # TODO update section's editor, but currently not a usecase for this method
+      @current_section.renderer.update_editor
     else
       @current_section.renderer.editor.hide if @current_section
       @current_section = section
       e = @current_section.renderer.editor
-      @argedit_box.add_with_viewport(e) unless e.parent
+      @argedit_vp.add(e) unless e.parent
       e.show
       self.helptext = TEXT_SECTION_SELECTED
     end
