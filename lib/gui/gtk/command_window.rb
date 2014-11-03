@@ -158,16 +158,15 @@ class CommandWindow < Window
 
   def switch_argumentbox(section)
     if section == nil
-      @current_section.renderer.editor.hide if @current_section
+      @argedit_vp.remove(@current_section.renderer.editor.hide) if @current_section
       self.helptext = TEXT_NO_SECTION_SELECTED 
     elsif section == @current_section
       @current_section.renderer.update_editor
     else
-      @current_section.renderer.editor.hide if @current_section
+      @argedit_vp.remove(@current_section.renderer.editor.hide) if @current_section
       @current_section = section
       e = @current_section.renderer.editor
-      @argedit_vp.add(e) unless e.parent
-      e.show
+      @argedit_vp.add(e)
       self.helptext = TEXT_SECTION_SELECTED
     end
   end
