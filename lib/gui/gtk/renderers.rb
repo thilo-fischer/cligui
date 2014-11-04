@@ -65,9 +65,7 @@ class ElementRenderer
   # Update and return the widget (often a container filled with other widgets) to modify the element's settings.
   def editor
     trace_methodcall
-    unless @editor
-      @editor = new_editor
-    end
+    @editor = new_editor unless @editor
     @editor.show_all
     update_editor_activity
     @editor
@@ -78,19 +76,28 @@ class ElementRenderer
     Gtk::Label.new(@element.title)
   end
 
+  # no need to update if editor widgets have not yet been created or are not currently being displayed in the GUI
+  private def update_editor?
+    @editor && @editor.parent
+  end
+
   # Shall be overridden by derived classes. Implementation is very generic, but neither accurate nor efficient.
   def update_editor
     trace_methodcall
-    parent = @editor.parent
-    parent.remove(@editor)
-    @editor = new_editor
-    parent.add(@editor)
-    update_editor_activity
+    if update_editor?
+      parent = @editor.parent
+      parent.remove(@editor)
+      @editor = new_editor
+      parent.add(@editor)
+      update_editor_activity
+    end
   end
 
   def update_editor_activity
     trace_methodcall
-    @editor.sensitive = @element.active?
+    if @editor
+      @editor.sensitive = @element.active?
+    end
   end
 
   def update

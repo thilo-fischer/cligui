@@ -160,14 +160,16 @@ class CommandWindow < Window
     if section == nil
       @argedit_vp.remove(@current_section.renderer.editor.hide) if @current_section
       self.helptext = TEXT_NO_SECTION_SELECTED 
-    elsif section == @current_section
-      @current_section.renderer.update_editor
-    else
-      @argedit_vp.remove(@current_section.renderer.editor.hide) if @current_section
+    else 
       @current_section = section
-      e = @current_section.renderer.editor
-      @argedit_vp.add(e)
+      section.renderer.update_editor
+      @argedit_vp.child = section.renderer.editor
+#unless section == @current_section
+#@argedit_vp.remove(@current_section.renderer.editor) if @current_section
+#e = @current_section.renderer.editor
+#@argedit_vp.add(e)
       self.helptext = TEXT_SECTION_SELECTED
+#end
     end
   end
 
