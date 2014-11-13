@@ -40,51 +40,56 @@ class CommandWindow < Window
               #w.set_attributes()
           end,
       },
-      :scrolled_win => {
-          :self => Gtk::ScrolledWindow.new,
-          :setup => Proc.new do |scrolled_win|
-              scrolled_win.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC) 
-          end,
-          :cmd_box => {
-              :self => Gtk::HBox.new,
-              :cmd_btn => {
-                  :self => Gtk::Button.new(@clidef.executable),
+      :paned => {
+          :self => Gtk::VPaned.new,
+          :scrolled_win_display => {
+              :self => Gtk::ScrolledWindow.new,
+              :packing => Proc.new { |c, w| c.pack1(w, true, false) },
+              :setup => Proc.new do |scrolled_win|
+                  scrolled_win.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC) 
+              end,
+              :cmd_box => {
+                  :self => Gtk::HBox.new,
+                  :cmd_btn => {
+                      :self => Gtk::Button.new(@clidef.executable),
+                  },
+                  :setup => Proc.new { |w| @cmd_box = w }
               },
-              :setup => Proc.new { |w| @cmd_box = w }
-          },
-      },
-      :argumentbox => {
-        :self => Gtk::HBox.new,
-        :scrolled_win_edit => {
-          :self => Gtk::ScrolledWindow.new,
-          :setup => Proc.new do |scrolled_win|
-              scrolled_win.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC) 
-          end,
-          :viewport => {
-              :self => Gtk::Viewport.new(nil, nil),
-              :setup => Proc.new do |vp|
-                  @argedit_vp = vp
+          }, # :scrolled_win_display
+          :argumentbox => {
+            :self => Gtk::HBox.new,
+            :packing => Proc.new { |c, w| c.pack2(w, true, false) },
+            :scrolled_win_edit => {
+              :self => Gtk::ScrolledWindow.new,
+              :setup => Proc.new do |scrolled_win|
+                  scrolled_win.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC) 
               end,
-            },
-        },
-        :scrolled_win_help => {
-          :self => Gtk::ScrolledWindow.new,
-          :setup => Proc.new do |scrolled_win|
-              scrolled_win.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC) 
-          end,
-          :help => {
-              :self => Gtk::TextView.new,
-              :setup => Proc.new do |w|
-                w.wrap_mode = Gtk::TextTag::WRAP_WORD
-                w.editable = false
-                w.cursor_visible = false
-                w.left_margin, w.right_margin = 8, 8
-                @help_buf = w.buffer
-                @help_buf.text = TEXT_NO_SECTION_SELECTED
+              :viewport => {
+                  :self => Gtk::Viewport.new(nil, nil),
+                  :setup => Proc.new do |vp|
+                      @argedit_vp = vp
+                  end,
+                }, # :viewport
+            }, # :scrolled_win_edit
+            :scrolled_win_help => {
+              :self => Gtk::ScrolledWindow.new,
+              :setup => Proc.new do |scrolled_win|
+                  scrolled_win.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC) 
               end,
-          },
-        },
-      },
+              :help => {
+                  :self => Gtk::TextView.new,
+                  :setup => Proc.new do |w|
+                    w.wrap_mode = Gtk::TextTag::WRAP_WORD
+                    w.editable = false
+                    w.cursor_visible = false
+                    w.left_margin, w.right_margin = 8, 8
+                    @help_buf = w.buffer
+                    @help_buf.text = TEXT_NO_SECTION_SELECTED
+                  end,
+              }, # :help
+            }, # :scrolled_win_help
+         }, # :argumentbox
+      }, # :paned
       :cmdentry => {
           :self => Gtk::Entry.new,
           :packing => Proc.new { |container, w| container.pack_start(w, FALSE, FALSE) },
