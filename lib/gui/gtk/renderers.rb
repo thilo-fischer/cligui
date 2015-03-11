@@ -11,6 +11,10 @@ require 'gtk2'
 
 class ElementRenderer
 
+  def self.create(element)
+    new(element)
+  end
+
   # Create an object to handle the presentation of element within the GUI.
   def initialize(element)
     $l.debug("initialize #{self} for #{element}")
@@ -52,7 +56,7 @@ class ElementRenderer
   end
 
   def update_display_activity
-    trace_methodcall
+    #trace_methodcall
     # FIXME
     @display.visible = @element.active?
 #if @element.active?
@@ -152,21 +156,29 @@ class SectionRenderer < ElementRenderer
           radio_group_button ||= b
           b
         end
+# TODO use combobox if many entries
       else
         get_button = Proc.new { Gtk::CheckButton.new }
       end
       @element.each_element do |e|
+        box = Gtk::HBox.new
+        container.add(box)
         button = get_button.call
-        $l.debug("adding #{e} ...")
+        helpbtn = Gtk::Button.new("?")
+        helpbtn.border_width = 1
         $l.debug("adding #{e} as #{e.renderer.editor} to #{container} of #{@element}")
-        button.add(e.renderer.editor)
-        container.add(button)
+        box.pack_start(button, false, false)
+        box.pack_start(e.renderer.editor, false, false)
+        box.pack_end(helpbtn, false, false)
         button.signal_connect('clicked') do |b|
           e.active = b.active?
           e.renderer.update_activity
           @@cmdwindow.update_cmdentry
         end
-        button.signal_connect('focus') { @@cmdwindow.helptext = e.helptext }
+        button.signal_connect('focus') { @@cmdwindow.helptext = e.helptext ; puts e.inspect }
+        helpbtn.signal_connect('clicked') { @@cmdwindow.helptext = e.helptext }
+        box.signal_connect('enter-notify-event') { @@cmdwindow.helptext = e.helptext }
+        box.signal_connect('leave-notify-event') { @@cmdwindow.helptext = e.helptext } # TODO !!
       end
       container
     end
@@ -235,6 +247,11 @@ class FlagRenderer < ElementRenderer
 end # FlagRenderer
 
 class ArgumentRenderer < ElementRenderer
+
+  def initialize(element)
+    super
+    update_model
+  end
 
   private def model
     unless @model
@@ -325,6 +342,69 @@ class ArgumentRenderer < ElementRenderer
 # TODO add arguments from clipboard button
 
     box
-  end
+  end # new_editor
 
 end # ArgumentRenderer
+
+class FileArgRenderer < ArgumentRenderer
+
+  def self.create(element)
+    if element.max_count == 1
+      SingleFileArgRenderer.new(element)
+    else
+      MultiFileArgRenderer.new(element)
+    end
+  end
+
+end # FileArgRenderer
+
+class SingleFileArgRenderer < FileArgRenderer
+  
+  private def update_element
+    @element.argument = [ @button.filename ]
+    update_display
+    @@cmdwindow.update_cmdentry
+  end
+
+  private def new_display
+    trace_methodcall
+    @display_label = Gtk::Label.new(@element.argument.first)
+  end
+
+  def update_display
+    trace_methodcall
+    @display_label.text = @element.argument.first
+    update_display_activity
+  end
+
+  private def new_editor
+    @button = Gtk::FileChooserButton.new(@element.title, Gtk::FileChooser::ACTION_SELECT_FILE)
+    @button.signal_connect('selection_changed') { update_element }
+  end # new_editor
+
+end # SingleFileArgRenderer
+
+class MultiFileArgRenderer < FileArgRenderer
+  
+  private def update_element
+    trace_methodcall
+    @display_label.text = @element.argument.join("\n")
+    @@cmdwindow.update_cmdentry
+  end
+
+  private def new_display
+    trace_methodcall
+    @display_label = Gtk::Label.new(@element.argument.join("\n"))
+  end
+
+  private def new_editor
+    button = Gtk::Button.new("Add #{@element.title}") # FIXME button title
+    button.signal_connect('clicked') do
+      dialog = Gtk::FileChooserDialog.new(@element.title, button.parent_window,
+      Gtk::FileChooser::ACTION_SELECT_FILE)
+
+    end
+  end # new_editor
+
+end # MultiFileArgRenderer
+

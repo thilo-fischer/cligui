@@ -5,7 +5,7 @@ class Section < Element; end
 class Switch < Element; end
 class Flag < Switch; end
 class Argument < Element; end
-class FileArg <  Argument; end
+class FileArg < Argument; end
 
 class Element
   
@@ -83,7 +83,7 @@ class Element
   end
 
   def renderer
-    @renderer ||= self.class::RENDERER.new(self)
+    @renderer ||= self.class::RENDERER.create(self)
   end
 
 end # class Element

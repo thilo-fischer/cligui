@@ -50,6 +50,7 @@ class CommandWindow < Window
               end,
               :cmd_box => {
                   :self => Gtk::HBox.new,
+                  :packing => Proc.new { |c, w| c.add_with_viewport(w) },
                   :cmd_btn => {
                       :self => Gtk::Button.new(@clidef.executable),
                   },
@@ -90,14 +91,22 @@ class CommandWindow < Window
             }, # :scrolled_win_help
          }, # :argumentbox
       }, # :paned
-      :cmdentry => {
-          :self => Gtk::Entry.new,
-          :packing => Proc.new { |container, w| container.pack_start(w, FALSE, FALSE) },
-          :setup => Proc.new do |w|
-              w.editable = false # TODO allow entering text, parse the text entered and update visual command line builder accordingly
-              @cmdentry = w
-          end,
-      },
+      :cmdline_box => {
+          :self => Gtk::HBox.new,
+          :packing => Proc.new { |container, w| container.pack_start(w, FALSE, TRUE) },
+          :workdir_btn => {
+              :self => Gtk::FileChooserButton.new("Working directory", Gtk::FileChooser::ACTION_SELECT_FOLDER),
+              :packing => Proc.new { |container, w| container.pack_start(w, FALSE, FALSE) },
+          },
+          :cmdentry => {
+              :self => Gtk::Entry.new,
+              :packing => Proc.new { |container, w| container.pack_start(w, TRUE, TRUE) },
+              :setup => Proc.new do |w|
+                  w.editable = false # TODO allow entering text, parse the text entered and update visual command line builder accordingly
+                  @cmdentry = w
+              end,
+          }, # :cmdentry
+      }, # :cmdline_box
       :btnbox => {
           :self => Gtk::HBox.new,
           :packing => Proc.new { |container, w| container.pack_start(w, FALSE, FALSE) },

@@ -28,13 +28,13 @@ class Window
     @window.border_width = 10 
     @window.signal_connect('destroy') { Gtk.main_quit } # FIXME suppress subsequent dialogs
     @window.set_size_request(width, height)
-    pack_widgets(@window)
+    install_widgets(@window)
   end
 
-  def pack_widgets(container, wgts = widgets)
+  def install_widgets(container, wgts = widgets)
     packed = FALSE
     current = wgts[:self]
-    #$l.trace "packing #{current} into #{container}"
+    #$l.debug "packing #{current} into #{container}"
     wgts.each_pair do |key, value|
        case key
        when :self
@@ -49,8 +49,8 @@ class Window
        else
          case value
          when Hash
-           #$l.trace "pack #{key} #{value[:self]} from #{value} into #{current}"
-           pack_widgets(current, value)
+           $l.debug "pack #{key} #{value[:self]} into #{current}"
+           install_widgets(current, value)
          when Proc
            #$l.trace "yield #{key} #{value}"
            value.yield(current)
