@@ -1,0 +1,5 @@
+<category>
+    <title>Image processing</title>
+    <description>Process image files. Operations like display image files, change/convert colors, convert image file formats, change resolution and size, create thumbnail images, crop image files, mix multiple image files into one, add image effects like relief, adjust brightness/contrast/hue, ...</description>
+</category>
+<!-- Imagick -->

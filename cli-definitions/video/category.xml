@@ -1,0 +1,5 @@
+<category>
+    <title>Video processing</title>
+    <description>Process video files. Some of these tools are also handy for certain operations on audio files. Operations like play video or audio files, convert video or audio formats, change video resolution, change speed of a video, extract parts of videos, extract audio stream from a video, merge audio file and image files into a video file, ...</description>
+</category>
+<!-- mplayer/mencoder, ffmpeg, ... -->

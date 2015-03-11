@@ -1,0 +1,5 @@
+<category>
+    <title>Audio processing</title>
+    <description>Process audio files. Operations like play audio files, convert audio formats, change speed, extract parts of or concatenate audio files, mix multiple audio files into one file, remove silent parts from an audio file, add sound effects like echo, equalizer, pitch, compressor, ...</description>
+</category>
+<!-- sox -->
